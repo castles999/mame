@@ -276,7 +276,7 @@ uint32_t pacman_state::screen_update_pacman(screen_device &screen, bitmap_ind16 
     livingarcade_capture::trace().dictionary(1,m_gfxdecode->gfx(1));
     livingarcade_capture::trace().palette(*m_palette);
     livingarcade_capture::trace().begin(
-        m_screen->frame_number(),cliprect.min_x,cliprect.min_y,cliprect.max_x,cliprect.max_y,
+        screen.frame_number(),cliprect.min_x,cliprect.min_y,cliprect.max_x,cliprect.max_y,
         m_charbank,m_spritebank,m_palettebank,m_colortablebank,m_flipscreen,m_bgpriority,
         &m_videoram[0],m_colorram ? &m_colorram[0] : nullptr,
         m_spriteram ? &m_spriteram[0] : nullptr,m_spriteram ? unsigned(m_spriteram.bytes()) : 0,
