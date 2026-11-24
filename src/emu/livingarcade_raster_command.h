@@ -157,6 +157,55 @@ struct scope {
             const auto p=data[yy*gfx.rowbytes()+xx];if(p>=32)status|=8;put(p,1);
         }
     }
+    // Tag 5 declares undefined initial color: replay must prove every pixel
+    // was written, never silently substitute a black framebuffer.
+    void undefined_color(){clear(5,0);}
+    // Tag 6 preserves initial priority only when hardware does not clear it.
+    // This is input state, not a captured final color plane.
+    template<class Pri> void seed_priority(const Pri &pri){
+        if(status)return;
+        if(&pri!=priority){status|=4;return;}
+        const u64 n=u64(r-l)*(b-t);
+        if(!room(17+n))return;
+        put(6,1);rect(l,t,r,b);
+        for(int y=t;y<b;++y)for(int x=l;x<r;++x)put(pri.pix(y,x),1);
+    }
+    // Tag 7: ordered source gfx draw, no priority writes, 32-bit transparent mask.
+    template<class Gfx,class Dest,class Rect>
+    void plain_sprite(Gfx &gfx,const Dest &dest,const Rect &clip,
+                      u32 code,u32 color,int fx,int fy,int x,int y,u32 mask){
+        if(status)return;
+        unsigned sw=gfx.width(),sh=gfx.height();
+        if(&dest!=target||!gfx.elements()||!gfx.colors()||!sw||!sh||sw>64||sh>64||
+           x<-4096||x>4096||y<-4096||y>4096){status|=8;return;}
+        int cl=std::max(l,clip.left()),ct=std::max(t,clip.top());
+        int cr=std::min(r,clip.right()+1),cb=std::min(b,clip.bottom()+1);
+        if(cl>=cr||ct>=cb)return;
+        if(!room(38+u64(sw)*sh))return;
+        const auto *data=gfx.get_data(code%gfx.elements());
+        put(7,1);rect(cl,ct,cr,cb);put(x,4);put(y,4);put(sw,2);put(sh,2);
+        put(fx?1:0,1);put(fy?1:0,1);put(gfx.colorbase()+gfx.granularity()*(color%gfx.colors()),2);
+        put(mask,4);put(0,1);
+        for(unsigned yy=0;yy<sh;++yy)for(unsigned xx=0;xx<sw;++xx){
+            const auto p=data[yy*gfx.rowbytes()+xx];if(p>=32)status|=8;put(p,1);
+        }
+    }
+    // Tag 8: direct source pen (e.g. generated star), not a framebuffer read.
+    template<class Dest> void point(const Dest &dest,int x,int y,u32 pen){
+        if(status)return;
+        if(&dest!=target||!bounds(x,y,x+1,y+1)||pen>65535){status|=16;return;}
+        if(!room(11))return;
+        put(8,1);put(x,4);put(y,4);put(pen,2);
+    }
+    // Tag 9: explicit ordered destination-to-destination pixel move.
+    template<class Dest> void move_pixel(const Dest &dest,int sx,int sy,int dx,int dy){
+        if(status)return;
+        if(&dest!=target||!bounds(sx,sy,sx+1,sy+1)||!bounds(dx,dy,dx+1,dy+1)){
+            status|=16;return;
+        }
+        if(!room(17))return;
+        put(9,1);put(sx,4);put(sy,4);put(dx,4);put(dy,4);
+    }
     // Optional companion stream, correlated one-to-one with committed UPD1 records.
     // This samples the effective adjusted palette at callback completion, NOT final
     // OSD scanout. Palette changes between callbacks remain a separate gate.
@@ -210,6 +259,20 @@ struct sprite_guard {
     ~sprite_guard(){if(s)--s->sprite_depth;}
     sprite_guard(const sprite_guard&)=delete;
 };
+struct plain_sprite_guard {
+    scope *s=active;
+    template<class... Args> explicit plain_sprite_guard(Args&&...args){
+        if(s){if(!s->sprite_depth)s->plain_sprite(args...);++s->sprite_depth;}
+    }
+    ~plain_sprite_guard(){if(s)--s->sprite_depth;}
+    plain_sprite_guard(const plain_sprite_guard&)=delete;
+};
+template<class Dest> inline void point(const Dest &dest,int x,int y,u32 pen){
+    if(active)active->point(dest,x,y,pen);
+}
+template<class Dest> inline void move_pixel(const Dest &dest,int sx,int sy,int dx,int dy){
+    if(active)active->move_pixel(dest,sx,sy,dx,dy);
+}
 inline void clear(unsigned tag,unsigned value){if(active)active->clear(tag,value);}
 }
 #endif
