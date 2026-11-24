@@ -9,6 +9,7 @@
 ***************************************************************************/
 
 #include "emu.h"
+#include "livingarcade_raster_command.h"
 #include "1942.h"
 
 /***************************************************************************
@@ -289,9 +290,14 @@ void _1942_state::draw_sprites(bitmap_ind16 &bitmap, const rectangle &cliprect)
 
 uint32_t _1942_state::screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
+	livingarcade_raster_command::scope la_commands(bitmap, screen.priority(), screen.frame_number(), cliprect);
+	la_commands.seed_priority(screen.priority());
+	la_commands.undefined_color();
 	m_bg_tilemap->draw(screen, bitmap, cliprect, 0, 0);
 	draw_sprites(bitmap, cliprect);
 	m_fg_tilemap->draw(screen, bitmap, cliprect, 0, 0);
+	la_commands.finish(bitmap, screen.priority());
+	la_commands.capture_palette(bitmap, *m_palette);
 	return 0;
 }
 
