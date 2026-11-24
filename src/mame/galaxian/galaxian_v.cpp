@@ -213,6 +213,7 @@ H=B0: 0C,0C,0D,0D,0E,0E,0F,0F 0C,0C,2D,2D,0E,0E,2F,2F
 ***************************************************************************/
 
 #include "emu.h"
+#include "livingarcade_rgb_command.h"
 #include "video/resnet.h"
 #include "galaxian.h"
 
@@ -459,6 +460,7 @@ void galaxian_state::state_save_register()
 
 uint32_t galaxian_state::screen_update_galaxian(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect)
 {
+	livingarcade_rgb_command::scope la_rgb(bitmap, screen.frame_number(), cliprect);
 	/* draw the background layer (including stars) */
 	m_draw_background_ptr(bitmap, cliprect);
 
@@ -473,6 +475,7 @@ uint32_t galaxian_state::screen_update_galaxian(screen_device &screen, bitmap_rg
 	if (!m_draw_bullet_ptr.isnull())
 		bullets_draw(screen, bitmap, cliprect, &m_spriteram[m_bullets_base]);
 
+	la_rgb.finish(bitmap);
 	return 0;
 }
 
@@ -900,7 +903,7 @@ void galaxian_state::stars_draw_row(bitmap_rgb32 &bitmap, int maxx, int y, uint3
 		if (star_offs >= STAR_RNG_PERIOD)
 			star_offs = 0;
 		if (enable_star && (star & 0x80) != 0 && (star & starmask) != 0)
-			bitmap.pix(y, m_x_scale*x + 0) = m_star_color[star & 0x3f];
+			livingarcade_rgb_command::point(bitmap, m_x_scale*x + 0, y, m_star_color[star & 0x3f]);
 
 		/* second RNG clock: two pixels */
 		star = m_stars[star_offs++];
@@ -908,8 +911,8 @@ void galaxian_state::stars_draw_row(bitmap_rgb32 &bitmap, int maxx, int y, uint3
 			star_offs = 0;
 		if (enable_star && (star & 0x80) != 0 && (star & starmask) != 0)
 		{
-			bitmap.pix(y, m_x_scale*x + 1) = m_star_color[star & 0x3f];
-			bitmap.pix(y, m_x_scale*x + 2) = m_star_color[star & 0x3f];
+			livingarcade_rgb_command::point(bitmap, m_x_scale*x + 1, y, m_star_color[star & 0x3f]);
+			livingarcade_rgb_command::point(bitmap, m_x_scale*x + 2, y, m_star_color[star & 0x3f]);
 		}
 	}
 }
@@ -925,7 +928,7 @@ void galaxian_state::stars_draw_row(bitmap_rgb32 &bitmap, int maxx, int y, uint3
 void galaxian_state::null_draw_background(bitmap_rgb32 &bitmap, const rectangle &cliprect)
 {
 	/* erase the background to black */
-	bitmap.fill(rgb_t::black(), cliprect);
+	livingarcade_rgb_command::fill(bitmap, rgb_t::black(), cliprect);
 }
 
 
@@ -950,7 +953,7 @@ void galaxian_state::galaxian_draw_stars(bitmap_rgb32 &bitmap, const rectangle &
 void galaxian_state::galaxian_draw_background(bitmap_rgb32 &bitmap, const rectangle &cliprect)
 {
 	/* erase the background to black first */
-	bitmap.fill(rgb_t::black(), cliprect);
+	livingarcade_rgb_command::fill(bitmap, rgb_t::black(), cliprect);
 
 	galaxian_draw_stars(bitmap, cliprect, 256);
 }
@@ -964,24 +967,24 @@ void galaxian_state::background_draw_colorsplit(bitmap_rgb32 &bitmap, const rect
 		rectangle draw = cliprect;
 		draw.max_x = std::min(draw.max_x, split_flipped * m_x_scale - 1);
 		if (draw.min_x <= draw.max_x)
-			bitmap.fill(rgb_t::black(), draw);
+			livingarcade_rgb_command::fill(bitmap, rgb_t::black(), draw);
 
 		draw = cliprect;
 		draw.min_x = std::max(draw.min_x, split_flipped * m_x_scale);
 		if (draw.min_x <= draw.max_x)
-			bitmap.fill(color, draw);
+			livingarcade_rgb_command::fill(bitmap, color, draw);
 	}
 	else
 	{
 		rectangle draw = cliprect;
 		draw.max_x = std::min(draw.max_x, split * m_x_scale - 1);
 		if (draw.min_x <= draw.max_x)
-			bitmap.fill(color, draw);
+			livingarcade_rgb_command::fill(bitmap, color, draw);
 
 		draw = cliprect;
 		draw.min_x = std::max(draw.min_x, split * m_x_scale);
 		if (draw.min_x <= draw.max_x)
-			bitmap.fill(rgb_t::black(), draw);
+			livingarcade_rgb_command::fill(bitmap, rgb_t::black(), draw);
 	}
 }
 
@@ -1014,7 +1017,7 @@ void galaxian_state::scramble_draw_stars(bitmap_rgb32 &bitmap, const rectangle &
 void galaxian_state::scramble_draw_background(bitmap_rgb32 &bitmap, const rectangle &cliprect)
 {
 	/* blue background - 390 ohm resistor */
-	bitmap.fill(m_background_enable ? rgb_t(0,0,0x56) : rgb_t::black(), cliprect);
+	livingarcade_rgb_command::fill(bitmap, m_background_enable ? rgb_t(0,0,0x56) : rgb_t::black(), cliprect);
 
 	scramble_draw_stars(bitmap, cliprect, 256);
 }
@@ -1032,7 +1035,7 @@ void galaxian_state::anteater_draw_background(bitmap_rgb32 &bitmap, const rectan
 void galaxian_state::jumpbug_draw_background(bitmap_rgb32 &bitmap, const rectangle &cliprect)
 {
 	/* blue background - 390 ohm resistor */
-	bitmap.fill(m_background_enable ? rgb_t(0,0,0x56) : rgb_t::black(), cliprect);
+	livingarcade_rgb_command::fill(bitmap, m_background_enable ? rgb_t(0,0,0x56) : rgb_t::black(), cliprect);
 
 	/* render stars same as galaxian but nothing in the status area */
 
@@ -1061,14 +1064,14 @@ void galaxian_state::turtles_draw_background(bitmap_rgb32 &bitmap, const rectang
 	        GREEN - 470 ohm resistor
 	        BLUE  - 390 ohm resistor
 	*/
-	bitmap.fill(rgb_t(m_background_red * 0x55, m_background_green * 0x47, m_background_blue * 0x55), cliprect);
+	livingarcade_rgb_command::fill(bitmap, rgb_t(m_background_red * 0x55, m_background_green * 0x47, m_background_blue * 0x55), cliprect);
 }
 
 
 void nihon_sfx_state::sfx_draw_background(bitmap_rgb32 &bitmap, const rectangle &cliprect)
 {
 	// current schematics are unreadable, assuming like Turtles
-	bitmap.fill(rgb_t(m_background_red * 0x55, m_background_green * 0x47, m_background_blue * 0x55), cliprect);
+	livingarcade_rgb_command::fill(bitmap, rgb_t(m_background_red * 0x55, m_background_green * 0x47, m_background_blue * 0x55), cliprect);
 	scramble_draw_stars(bitmap, cliprect, 256);
 }
 
@@ -1144,15 +1147,15 @@ inline void galaxian_state::galaxian_draw_pixel(bitmap_rgb32 &bitmap, const rect
 		x *= m_x_scale;
 		x += m_h0_start;
 		if (x >= cliprect.min_x && x <= cliprect.max_x)
-			bitmap.pix(y, x) = color;
+			livingarcade_rgb_command::point(bitmap, x, y, color);
 
 		x++;
 		if (x >= cliprect.min_x && x <= cliprect.max_x)
-			bitmap.pix(y, x) = color;
+			livingarcade_rgb_command::point(bitmap, x, y, color);
 
 		x++;
 		if (x >= cliprect.min_x && x <= cliprect.max_x)
-			bitmap.pix(y, x) = color;
+			livingarcade_rgb_command::point(bitmap, x, y, color);
 	}
 }
 
