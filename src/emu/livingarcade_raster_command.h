@@ -20,12 +20,12 @@ inline constexpr u64 offset = 14695981039346656037ULL, prime = 1099511628211ULL;
 inline void mix(u64 &h,unsigned b){h=(h^(b&255))*prime;}
 struct writer {
     std::FILE *f=nullptr; u64 bytes=0; u32 count=0; bool failed=false,capped=false;
-    writer(){
-        const char *p=std::getenv("LIVINGARCADE_RASTER_COMMAND");
+    explicit writer(const char *env="LIVINGARCADE_RASTER_COMMAND",const char *magic="LARC0001"){
+        const char *p=std::getenv(env);
         if(!p||!*p)return;
         f=std::fopen(p,"wbx");
         if(!f){std::fputs("LivingArcade command capture: fresh output required\n",stderr);return;}
-        write("LARC0001",8);
+        write(magic,8);
     }
     void write(const void *p,std::size_t n){
         if(!f||failed)return;
@@ -39,6 +39,7 @@ struct writer {
     }
 };
 inline writer &output(){static writer w;return w;}
+inline writer &palette_output(){static writer w("LIVINGARCADE_RASTER_PALETTE","LARP0001");return w;}
 struct scope;
 inline thread_local scope *active=nullptr;
 struct scope {
@@ -107,6 +108,37 @@ struct scope {
         for(unsigned yy=0;yy<sh;++yy)for(unsigned xx=0;xx<sw;++xx){
             const auto p=data[yy*gfx.rowbytes()+xx];if(p>=32)status|=8;put(p,1);
         }
+    }
+    // Optional companion stream, correlated one-to-one with committed UPD1 records.
+    // This samples the effective adjusted palette at callback completion, NOT final
+    // OSD scanout. Palette changes between callbacks remain a separate gate.
+    template<class Bitmap,class Palette>
+    void capture_palette(const Bitmap &dest,const Palette &palette){
+        if(!out||!finished||out->failed||out->capped)return;
+        auto &p=palette_output();
+        if(!p.f||p.failed||p.capped)return;
+        if(p.count+1!=out->count){p.failed=true;return;}
+        u32 flags=status;u32 n=palette.entries();
+        if(!palette.palette()||!n||n>65536||palette.shadows_enabled()||palette.highlights_enabled())flags|=32;
+        u64 rgb_hash=offset;
+        std::vector<u32> colors;
+        if(!flags){
+            colors.reserve(n);
+            for(u32 i=0;i<n;++i)colors.push_back(u32(palette.palette()->entry_adjusted_color(i))&0xffffff);
+            for(int y=t;y<b&&!flags;++y)for(int x=l;x<r;++x){
+                const auto pen=u32(dest.pix(y,x));
+                if(pen>=n){flags|=32;break;}
+                const u32 c=colors[pen];
+                mix(rgb_hash,c>>16);mix(rgb_hash,c>>8);mix(rgb_hash,c);
+            }
+        }
+        if(flags)colors.clear();
+        if(p.bytes+56+4*u64(colors.size())+12>max_file){p.capped=true;return;}
+        p.write("PAL1",4);p.integer(frame,8);
+        for(int v:{w,h,l,t,r,b})p.integer(u32(v),4);
+        p.integer(p.count,4);p.integer(flags,4);p.integer(colors.size(),4);p.integer(rgb_hash,8);
+        for(u32 c:colors)p.integer(c,4);
+        ++p.count;if(std::fflush(p.f)!=0)p.failed=true;
     }
     template<class Bitmap,class Pri>
     void finish(const Bitmap &dest,const Pri &pri){
