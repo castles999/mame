@@ -281,6 +281,25 @@ struct scope {
         if(!room(17))return;
         put(9,1);put(sx,4);put(sy,4);put(dx,4);put(dy,4);
     }
+    // Tags 11/12: MCR 91399 OR mixer / 91464 first-hit mixer.
+    // Record decoded 32x32 sprite plus board inputs, not the destination.
+    template<class Gfx,class Dest,class Pri>
+    void mcr_sprite(Gfx &gfx,const Dest &dest,const Pri &pri,u32 code,
+                    int x,int y,int fx,int fy,unsigned mode,u32 color,u32 mask){
+        if(status)return;
+        if(&dest!=target||&pri!=priority||gfx.width()!=32||gfx.height()!=32||
+           code>=gfx.elements()||x<0||x>=512||y<0||y>=512||
+           (mode!=11&&mode!=12)||color>255||mask>255){status|=8;return;}
+        if(!room(38+1024))return;
+        put(mode,1);rect(l,t,r,b);put(x,4);put(y,4);put(32,2);put(32,2);
+        put(fx?1:0,1);put(fy?1:0,1);put(color,2);put(mask,4);put(0,1);
+        const auto *src=gfx.get_data(code);
+        for(unsigned yy=0;yy<32;++yy)for(unsigned xx=0;xx<32;++xx){
+            const auto p=src[yy*gfx.rowbytes()+xx];
+            if(p>15)status|=8;
+            put(p,1);
+        }
+    }
     // Optional companion stream, correlated one-to-one with committed UPD1 records.
     // This samples the effective adjusted palette at callback completion, NOT final
     // OSD scanout. Palette changes between callbacks remain a separate gate.
