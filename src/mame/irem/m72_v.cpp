@@ -1,6 +1,7 @@
 // license:BSD-3-Clause
 // copyright-holders:Nicola Salmoria
 #include "emu.h"
+#include "livingarcade_raster_command.h"
 #include "m72.h"
 #include "cpu/nec/v25.h"
 
@@ -471,12 +472,19 @@ void m82_state::majtitle_draw_sprites(screen_device &screen, bitmap_ind16 &bitma
 
 u32 m72_state::screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
+	livingarcade_raster_command::scope la_commands(bitmap, screen.priority(), screen.frame_number(), cliprect);
 	if (m_video_off)
 	{
+		la_commands.seed_priority(screen.priority());
+		livingarcade_raster_command::clear(1, m_palette->black_pen());
 		bitmap.fill(m_palette->black_pen(), cliprect);
+		la_commands.finish(bitmap, screen.priority());
+		la_commands.capture_palette(bitmap, *m_palette);
 		return 0;
 	}
 
+	la_commands.undefined_color();
+	livingarcade_raster_command::clear(2, 0);
 	screen.priority().fill(0, cliprect);
 
 	m_fg_tilemap->set_scrollx(0,m_scrollx[0]);
@@ -504,6 +512,8 @@ u32 m72_state::screen_update(screen_device &screen, bitmap_ind16 &bitmap, const 
 
 	draw_sprites(screen, bitmap, cliprect);
 
+	la_commands.finish(bitmap, screen.priority());
+	la_commands.capture_palette(bitmap, *m_palette);
 	return 0;
 }
 
@@ -518,12 +528,19 @@ u32 m72_state::screen_update_m81(screen_device &screen, bitmap_ind16 &bitmap, co
 
 u32 m82_state::screen_update_m82(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
+	livingarcade_raster_command::scope la_commands(bitmap, screen.priority(), screen.frame_number(), cliprect);
 	if (m_video_off)
 	{
+		la_commands.seed_priority(screen.priority());
+		livingarcade_raster_command::clear(1, m_palette->black_pen());
 		bitmap.fill(m_palette->black_pen(), cliprect);
+		la_commands.finish(bitmap, screen.priority());
+		la_commands.capture_palette(bitmap, *m_palette);
 		return 0;
 	}
 
+	la_commands.undefined_color();
+	livingarcade_raster_command::clear(2, 0);
 	screen.priority().fill(0, cliprect);
 
 	tilemap_t *tm = (m_m82_tmcontrol & 0x40) ? m_bg_tilemap_large : m_bg_tilemap;
@@ -556,5 +573,7 @@ u32 m82_state::screen_update_m82(screen_device &screen, bitmap_ind16 &bitmap, co
 	tm->draw(screen, bitmap, cliprect, TILEMAP_DRAW_LAYER0, 0);
 	m_fg_tilemap->draw(screen, bitmap, cliprect, TILEMAP_DRAW_LAYER0, 0);
 
+	la_commands.finish(bitmap, screen.priority());
+	la_commands.capture_palette(bitmap, *m_palette);
 	return 0;
 }
