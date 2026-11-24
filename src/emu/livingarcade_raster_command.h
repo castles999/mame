@@ -41,6 +41,21 @@ struct writer {
 inline writer &output(){static writer w;return w;}
 inline writer &palette_output(){static writer w("LIVINGARCADE_RASTER_PALETTE","LARP0001");return w;}
 inline writer &present_output(){static writer w("LIVINGARCADE_RASTER_PRESENT","LARF0001");return w;}
+// MAME appends reserved black and white entries after the ordinary colors.
+// entry_adjusted_color() returns black for either out-of-range special index;
+// the renderer instead reads entry_list_adjusted(), which includes both.
+// Keep shadow/highlight groups fail-closed until their replay is qualified.
+template<class Palette>
+inline bool snapshot_colors(const Palette &palette,std::vector<u32> &colors){
+    const u32 entries=palette.entries();
+    if(!palette.palette()||!entries||entries>65536||palette.shadows_enabled()||palette.highlights_enabled())
+        return false;
+    const u32 n=std::min<u32>(65536,entries+2);
+    const auto *adjusted=palette.palette()->entry_list_adjusted();
+    colors.reserve(n);
+    for(u32 i=0;i<n;++i)colors.push_back(u32(adjusted[i])&0xffffff);
+    return true;
+}
 // Independent witness of the indexed texture source just before set_bitmap.
 // Not the post-OSD, scaled, CRT-filtered, brightness-modulated display image.
 template<class Bitmap,class Palette,class Rect>
@@ -49,17 +64,15 @@ inline void present_witness(const Bitmap &dest,const Palette &palette,u64 frame,
     if(!p.f||p.failed||p.capped)return;
     if(p.count>=max_updates){p.capped=true;return;}
     const int w=dest.width(),h=dest.height(),l=clip.left(),t=clip.top(),r=clip.right()+1,b=clip.bottom()+1;
-    u32 status=0,n=palette.entries();
+    u32 status=0;
     if(!dest.valid()||w<=0||h<=0||w>1024||h>1024||l<0||t<0||r>w||b>h||l>=r||t>=b)status|=1;
-    if(!palette.palette()||!n||n>65536||palette.shadows_enabled()||palette.highlights_enabled())status|=32;
     u64 indexed=offset,rgb=offset;
     std::vector<u32> colors;
+    if(!status&&!snapshot_colors(palette,colors))status|=32;
     if(!status){
-        colors.reserve(n);
-        for(u32 i=0;i<n;++i)colors.push_back(u32(palette.palette()->entry_adjusted_color(i))&0xffffff);
         for(int y=t;y<b&&!status;++y)for(int x=l;x<r;++x){
             const auto pen=u32(dest.pix(y,x));
-            if(pen>=n){status|=32;break;}
+            if(pen>=colors.size()){status|=32;break;}
             mix(indexed,pen);mix(indexed,pen>>8);
             const u32 c=colors[pen];mix(rgb,c>>16);mix(rgb,c>>8);mix(rgb,c);
         }
@@ -153,16 +166,14 @@ struct scope {
         auto &p=palette_output();
         if(!p.f||p.failed||p.capped)return;
         if(p.count+1!=out->count){p.failed=true;return;}
-        u32 flags=status;u32 n=palette.entries();
-        if(!palette.palette()||!n||n>65536||palette.shadows_enabled()||palette.highlights_enabled())flags|=32;
+        u32 flags=status;
         u64 rgb_hash=offset;
         std::vector<u32> colors;
+        if(!flags&&!snapshot_colors(palette,colors))flags|=32;
         if(!flags){
-            colors.reserve(n);
-            for(u32 i=0;i<n;++i)colors.push_back(u32(palette.palette()->entry_adjusted_color(i))&0xffffff);
             for(int y=t;y<b&&!flags;++y)for(int x=l;x<r;++x){
                 const auto pen=u32(dest.pix(y,x));
-                if(pen>=n){flags|=32;break;}
+                if(pen>=colors.size()){flags|=32;break;}
                 const u32 c=colors[pen];
                 mix(rgb_hash,c>>16);mix(rgb_hash,c>>8);mix(rgb_hash,c);
             }
