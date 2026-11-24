@@ -7,6 +7,7 @@
 *********************************************************************/
 
 #include "emu.h"
+#include "livingarcade_raster_command.h"
 #include "dec0.h"
 
 
@@ -24,6 +25,9 @@ void dec0_8751_state::hbarrel_colpri_cb(u32 &colour, u32 &pri_mask)
 /* HB always keeps pf2 on top of pf3, no need explicitly support priority register */
 u32 dec0_8751_state::screen_update_hbarrel(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
+	livingarcade_raster_command::scope la_commands(bitmap, screen.priority(), screen.frame_number(), cliprect);
+	la_commands.undefined_color();
+	livingarcade_raster_command::clear(2, 0);
 	screen.priority().fill(0,cliprect);
 	const bool flip = m_tilegen[0]->get_flip_state();
 	m_tilegen[0]->set_flip_screen(flip);
@@ -35,6 +39,8 @@ u32 dec0_8751_state::screen_update_hbarrel(screen_device &screen, bitmap_ind16 &
 	m_tilegen[1]->draw(screen, bitmap, cliprect, 0, 2);
 	m_tilegen[0]->draw(screen, bitmap, cliprect, 0, 4);
 	m_spritegen->draw_sprites(screen, bitmap, cliprect, m_buffered_spriteram, 0x800/2);
+	la_commands.finish(bitmap, screen.priority());
+	la_commands.capture_palette(bitmap, *m_palette);
 	return 0;
 }
 
@@ -89,6 +95,9 @@ void dec0_state::baddudes_tile_cb(tile_data &tileinfo, u32 &tile, u32 &colour, u
 
 u32 drgninjab_state::screen_update_baddudes(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
+	livingarcade_raster_command::scope la_commands(bitmap, screen.priority(), screen.frame_number(), cliprect);
+	la_commands.seed_priority(screen.priority());
+	la_commands.undefined_color();
 	const bool flip = m_tilegen[0]->get_flip_state();
 	m_tilegen[0]->set_flip_screen(flip);
 	m_tilegen[1]->set_flip_screen(flip);
@@ -110,6 +119,8 @@ u32 drgninjab_state::screen_update_baddudes(screen_device &screen, bitmap_ind16 
 		m_tilegen[fg]->draw(screen, bitmap, cliprect, TILEMAP_DRAW_LAYER0, 0); // upper 8 pens of upper 8 priority marked tiles /* Foreground pens only */
 
 	m_tilegen[0]->draw(screen, bitmap, cliprect, 0, 0);
+	la_commands.finish(bitmap, screen.priority());
+	la_commands.capture_palette(bitmap, *m_palette);
 	return 0;
 }
 
@@ -144,6 +155,9 @@ void dec0_state::midres_colpri_cb(u32 &colour, u32 &pri_mask)
 
 u32 dec0_state::screen_update_robocop(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
+	livingarcade_raster_command::scope la_commands(bitmap, screen.priority(), screen.frame_number(), cliprect);
+	la_commands.undefined_color();
+	livingarcade_raster_command::clear(2, 0);
 	screen.priority().fill(0,cliprect);
 
 	const bool flip = m_tilegen[0]->get_flip_state();
@@ -158,6 +172,8 @@ u32 dec0_state::screen_update_robocop(screen_device &screen, bitmap_ind16 &bitma
 	m_tilegen[fg]->draw(screen, bitmap, cliprect, 0, 2);
 	m_spritegen->draw_sprites(screen, bitmap, cliprect, m_buffered_spriteram, 0x800/2);
 	m_tilegen[0]->draw(screen, bitmap, cliprect, 0, 0);
+	la_commands.finish(bitmap, screen.priority());
+	la_commands.capture_palette(bitmap, *m_palette);
 	return 0;
 }
 
@@ -233,6 +249,9 @@ u32 dec0_8751_state::screen_update_birdtry(screen_device &screen, bitmap_ind16 &
 
 u32 slyspy_state::screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
+	livingarcade_raster_command::scope la_commands(bitmap, screen.priority(), screen.frame_number(), cliprect);
+	la_commands.seed_priority(screen.priority());
+	la_commands.undefined_color();
 	const bool flip = m_tilegen[0]->get_flip_state();
 	m_tilegen[0]->set_flip_screen(flip);
 	m_tilegen[1]->set_flip_screen(flip);
@@ -249,6 +268,8 @@ u32 slyspy_state::screen_update(screen_device &screen, bitmap_ind16 &bitmap, con
 		m_tilegen[1]->draw(screen, bitmap, cliprect, TILEMAP_DRAW_LAYER0, 0); // upper 8 pens of upper 8 priority marked tiles
 
 	m_tilegen[0]->draw(screen, bitmap, cliprect, 0,0);
+	la_commands.finish(bitmap, screen.priority());
+	la_commands.capture_palette(bitmap, *m_palette);
 	return 0;
 }
 
