@@ -4,6 +4,7 @@
 /* NeoGeo sprites (and fixed text layer) */
 
 #include "emu.h"
+#include "livingarcade_scanline_command.h"
 #include "neogeo_spr.h"
 #include "screen.h"
 
@@ -250,11 +251,17 @@ inline void neosprite_base_device::draw_fixed_layer_2pixels(u32*&pixel_addr, int
 	const u8 data = gfx_base[offset];
 
 	if (data & 0x0f)
+	{
+		livingarcade_scanline_command::source_pixel(pixel_addr, data & 0x0f, char_pens[data & 0x0f], 2);
 		*pixel_addr = char_pens[data & 0x0f];
+	}
 	pixel_addr++;
 
 	if (data & 0xf0)
+	{
+		livingarcade_scanline_command::source_pixel(pixel_addr, (data & 0xf0) >> 4, char_pens[(data & 0xf0) >> 4], 2);
 		*pixel_addr = char_pens[(data & 0xf0) >> 4];
+	}
 	pixel_addr++;
 
 }
@@ -639,7 +646,10 @@ inline void neosprite_regular_device::draw_pixel(int romaddr, u32* dst, const pe
 						(BIT(src[0x0], x) << 0);
 
 	if (gfx)
+	{
+		livingarcade_scanline_command::source_pixel(dst, gfx, line_pens[gfx], 1);
 		*dst = line_pens[gfx];
+	}
 }
 
 
@@ -713,7 +723,10 @@ inline void neosprite_optimized_device::draw_pixel(int romaddr, u32* dst, const 
 	const u8 gfx = m_spritegfx8[romaddr];
 
 	if (gfx)
+	{
+		livingarcade_scanline_command::source_pixel(dst, gfx, line_pens[gfx], 1);
 		*dst = line_pens[gfx];
+	}
 }
 
 
