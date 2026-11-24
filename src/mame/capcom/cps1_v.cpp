@@ -3060,6 +3060,7 @@ uint32_t cps_state::screen_update_cps1(screen_device &screen, bitmap_ind16 &bitm
 
 	render_layers(screen, bitmap, cliprect);
 	la_commands.finish(bitmap, screen.priority());
+	la_commands.capture_palette(bitmap, *m_palette);
 	la_probe.finish(bitmap);
 
 	return 0;
