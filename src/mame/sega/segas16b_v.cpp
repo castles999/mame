@@ -7,6 +7,7 @@
 ***************************************************************************/
 
 #include "emu.h"
+#include "livingarcade_raster_command.h"
 #include "segas16b.h"
 
 
@@ -28,10 +29,15 @@ void segas16b_state::video_start()
 
 uint32_t segas16b_state::screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
+	livingarcade_raster_command::scope la_commands(bitmap, screen.priority(), screen.frame_number(), cliprect);
 	// if no drawing is happening, fill with black and get out
 	if (!m_segaic16vid->m_display_enable)
 	{
+		la_commands.seed_priority(screen.priority());
+		livingarcade_raster_command::clear(1, m_palette->black_pen());
 		bitmap.fill(m_palette->black_pen(), cliprect);
+		la_commands.finish(bitmap, screen.priority());
+		la_commands.capture_palette(bitmap, *m_palette);
 		return 0;
 	}
 
@@ -40,6 +46,8 @@ uint32_t segas16b_state::screen_update(screen_device &screen, bitmap_ind16 &bitm
 		m_sprites->draw_async(cliprect);
 
 	// reset priorities
+	la_commands.undefined_color();
+	livingarcade_raster_command::clear(2, 0);
 	screen.priority().fill(0, cliprect);
 
 	// draw background opaquely first, not setting any priorities
@@ -60,7 +68,11 @@ uint32_t segas16b_state::screen_update(screen_device &screen, bitmap_ind16 &bitm
 
 	// mix in sprites
 	if (!m_sprites)
+	{
+		la_commands.finish(bitmap, screen.priority());
+		la_commands.capture_palette(bitmap, *m_palette);
 		return 0;
+	}
 	bitmap_ind16 &sprites = m_sprites->bitmap();
 	m_sprites->iterate_dirty_rects(
 			cliprect,
@@ -71,6 +83,8 @@ uint32_t segas16b_state::screen_update(screen_device &screen, bitmap_ind16 &bitm
 					uint16_t *const dest = &bitmap.pix(y);
 					uint16_t const *const src = &sprites.pix(y);
 					uint8_t const *const pri = &screen.priority().pix(y);
+					if (auto *la = livingarcade_raster_command::active)
+						la->sega_sprite_row(bitmap, screen.priority(), rect.min_x, y, rect.max_x+1, src, m_spritepalbase, m_palette_entries);
 					for (int x = rect.min_x; x <= rect.max_x; x++)
 					{
 						// only process written pixels
@@ -97,5 +111,7 @@ uint32_t segas16b_state::screen_update(screen_device &screen, bitmap_ind16 &bitm
 				}
 			});
 
+	la_commands.finish(bitmap, screen.priority());
+	la_commands.capture_palette(bitmap, *m_palette);
 	return 0;
 }
