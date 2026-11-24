@@ -12,6 +12,30 @@ inline writer &scanline_output(){
     static writer w("LIVINGARCADE_NEOGEO_COMMAND","LANE0001");
     return w;
 }
+inline writer &frame_output(){
+    static writer w("LIVINGARCADE_NEOGEO_PRESENT","LANF0001");
+    return w;
+}
+// Complete RGB texture-source witness, independent of scanline commands.
+template<class Bitmap,class Rect>
+inline void frame_witness(const Bitmap &dest,u64 frame,const Rect &clip){
+    auto &o=frame_output();
+    if(!o.f||o.failed||o.capped)return;
+    if(o.count>=max_updates){o.capped=true;return;}
+    const int w=dest.width(),h=dest.height(),l=clip.left(),t=clip.top(),r=clip.right()+1,b=clip.bottom()+1;
+    u32 status=0;
+    if(!dest.valid()||w<=0||h<=0||w>1024||h>1024||l<0||t<0||r>w||b>h||l>=r||t>=b)status=1;
+    u64 hash=offset;
+    if(!status)for(int y=t;y<b;++y)for(int x=l;x<r;++x){
+        const u32 c=dest.pix(y,x);
+        for(unsigned i=0;i<4;++i)mix(hash,c>>(8*i));
+    }
+    if(o.bytes+48+12>max_file){o.capped=true;return;}
+    o.write("FRN1",4);o.integer(frame,8);
+    for(int v:{w,h,l,t,r,b})o.integer(u32(v),4);
+    o.integer(status,4);o.integer(hash,8);
+    ++o.count;if(std::fflush(o.f)!=0)o.failed=true;
+}
 struct scanline_scope;
 inline thread_local scanline_scope *line_active=nullptr;
 struct event { u16 x; u8 pen,layer; u32 color; };
