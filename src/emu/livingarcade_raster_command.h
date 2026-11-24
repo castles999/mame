@@ -313,6 +313,37 @@ struct scope {
         put(13,1);rect(x,y,end,y+1);put(palette_base,2);put(shadow_offset,2);
         for(int xx=x;xx<end;++xx)put(source[xx],2);
     }
+    // Tag 14: one IGS023 decoded sprite row; preserve source order and
+    // transparent gaps after the device has lowered mask ROM and zoom.
+    std::size_t pgm_start=0;
+    u32 pgm_count=0;
+    const u16 *pgm_dest=nullptr;
+    const u8 *pgm_pri=nullptr;
+    template<class Dest,class Pri>
+    void pgm_begin(const Dest &dest,const Pri &pri,int y,unsigned behind){
+        if(status)return;
+        if(pgm_dest||&dest!=target||&pri!=priority||y<t||y>=b||behind>1){
+            status|=8;return;
+        }
+        if(!room(10))return;
+        pgm_start=payload.size();pgm_count=0;
+        pgm_dest=&dest.pix(y,0);pgm_pri=&pri.pix(y,0);
+        put(14,1);put(y,4);put(behind,1);put(0,4);
+    }
+    void pgm_pixel(const u16 *dest,const u8 *pri,int x,u32 pen){
+        if(status)return;
+        if(!pgm_dest||dest!=pgm_dest||pri!=pgm_pri||x<l||x>=r||pen>65535||
+           pgm_count>=4096||payload.size()>max_payload-4){status|=8;return;}
+        put(x,2);put(pen,2);++pgm_count;
+    }
+    void pgm_end(){
+        if(!pgm_dest)return;
+        if(!status){
+            if(!pgm_count){payload.resize(pgm_start);--ops;}
+            else for(unsigned i=0;i<4;++i)payload[pgm_start+6+i]=u8(pgm_count>>(8*i));
+        }
+        pgm_dest=nullptr;pgm_pri=nullptr;
+    }
     // Optional companion stream, correlated one-to-one with committed UPD1 records.
     // This samples the effective adjusted palette at callback completion, NOT final
     // OSD scanout. Palette changes between callbacks remain a separate gate.
