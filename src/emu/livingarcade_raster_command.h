@@ -103,7 +103,8 @@ struct scope {
     bool bounds(int x,int y,int x2,int y2)const{return x>=l&&y>=t&&x2<=r&&y2<=b&&x<x2&&y<y2;}
     void rect(int x,int y,int x2,int y2){put(x,4);put(y,4);put(x2,4);put(y2,4);}
     void clear(unsigned tag,unsigned value){
-        if(!room(19))return;put(tag,1);rect(l,t,r,b);put(value,2);
+        if(!room(19))return;
+        put(tag,1);rect(l,t,r,b);put(value,2);
     }
     // Exact run geometry after MAME has updated dirty tiles and lowered scroll.
     // Auxiliary indexed targets only contribute priority in the current CPS scope.
