@@ -462,6 +462,7 @@ The games seem to use them to mark platforms, kill zones and no-go areas.
 
 #include "emu.h"
 #include "livingarcade_raster_probe.h"
+#include "livingarcade_raster_command.h"
 #include "cps1.h"
 
 #define VERBOSE 0
@@ -2979,6 +2980,7 @@ void cps_state::render_layers(screen_device &screen, bitmap_ind16 &bitmap, const
 	const uint16_t l2 = (layercontrol >> 0x0a) & 0x03;
 	const uint16_t l3 = (layercontrol >> 0x0c) & 0x03;
 	livingarcade_raster_probe::hit(livingarcade_raster_probe::priority_clear);
+	livingarcade_raster_command::clear(2, 0);
 	screen.priority().fill(0, cliprect);
 
 	if (BIT(m_game_config->bootleg_kludge, 7))
@@ -3005,6 +3007,7 @@ void cps_state::render_layers(screen_device &screen, bitmap_ind16 &bitmap, const
 uint32_t cps_state::screen_update_cps1(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
 	livingarcade_raster_probe::update_scope la_probe(&bitmap, screen.frame_number(), cliprect.left(), cliprect.top(), cliprect.right(), cliprect.bottom());
+	livingarcade_raster_command::scope la_commands(bitmap, screen.priority(), screen.frame_number(), cliprect);
 	const uint16_t videocontrol = m_cps_a_regs[CPS1_VIDEOCONTROL];
 
 	flip_screen_set(BIT(videocontrol, 15));
@@ -3045,15 +3048,18 @@ uint32_t cps_state::screen_update_cps1(screen_device &screen, bitmap_ind16 &bitm
 	// Depending on what type of monitor is connected, it can be glitchy on
 	// real hardware if 0xbff is not black.
 	livingarcade_raster_probe::hit(livingarcade_raster_probe::fill);
+	livingarcade_raster_command::clear(1, 0xbff);
 	bitmap.fill(0xbff, cliprect);
 
 	if (m_region_stars)
 	{
 		if (m_stars_enabled[0] || m_stars_enabled[1]) livingarcade_raster_probe::hit(livingarcade_raster_probe::stars);
+		if (m_stars_enabled[0] || m_stars_enabled[1]) livingarcade_raster_command::unsupported();
 		cps1_render_stars(screen, bitmap, cliprect);
 	}
 
 	render_layers(screen, bitmap, cliprect);
+	la_commands.finish(bitmap, screen.priority());
 	la_probe.finish(bitmap);
 
 	return 0;

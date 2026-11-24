@@ -10,6 +10,7 @@
 
 #include "emu.h"
 #include "livingarcade_raster_probe.h"
+#include "livingarcade_raster_command.h"
 #include "tilemap.h"
 
 #include "screen.h"
@@ -1222,6 +1223,7 @@ void tilemap_t::draw_roz_common(screen_device &screen, _BitmapClass &dest, const
 		return;
 	}
 
+	livingarcade_raster_command::unsupported();
 	livingarcade_raster_probe::tile_entry(&dest, true, m_scrollrows > 1, m_scrollcols > 1);
 	auto profile = g_profiler.start(PROFILER_TILEMAP_DRAW_ROZ);
 
@@ -1359,6 +1361,11 @@ void tilemap_t::draw_instance(screen_device &screen, _BitmapClass &dest, const b
 				const u16 *source0 = source_baseaddr + x_start;
 				typename _BitmapClass::pixel_t *dest0 = dest_baseaddr + x_start;
 				u8 *pmap0 = priority_baseaddr ? (priority_baseaddr + x_start) : nullptr;
+
+				if (auto *la = livingarcade_raster_command::active)
+					la->tile_run(dest, priority_bitmap, m_pixmap, m_flagsmap, x_start, y, x_end, nexty,
+						x_start + xpos, y + ypos, blit.mask, blit.value, blit.tilemap_priority_code,
+						prev_trans == WHOLLY_OPAQUE, blit.alpha);
 
 				// if we were opaque, use the opaque renderer
 				if (prev_trans == WHOLLY_OPAQUE)
