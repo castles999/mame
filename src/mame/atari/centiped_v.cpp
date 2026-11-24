@@ -7,6 +7,7 @@
 *************************************************************************/
 
 #include "emu.h"
+#include "livingarcade_raster_command.h"
 #include "centiped.h"
 
 
@@ -413,6 +414,9 @@ void centiped_state::mazeinv_paletteram_w(offs_t offset, uint8_t data)
 
 uint32_t centiped_state::screen_update_centiped(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
+	livingarcade_raster_command::scope la_commands(bitmap, screen.priority(), screen.frame_number(), cliprect);
+	la_commands.seed_priority(screen.priority());
+	la_commands.undefined_color();
 	rectangle spriteclip = cliprect;
 
 	/* draw the background */
@@ -436,12 +440,17 @@ uint32_t centiped_state::screen_update_centiped(screen_device &screen, bitmap_in
 
 		m_gfxdecode->gfx(1)->transmask(bitmap, spriteclip, code, color, flipx, flipy, x, y, m_penmask[color & 0x3f]);
 	}
+	la_commands.finish(bitmap, screen.priority());
+	la_commands.capture_palette(bitmap, *m_palette);
 	return 0;
 }
 
 
 uint32_t centiped_state::screen_update_warlords(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
+	livingarcade_raster_command::scope la_commands(bitmap, screen.priority(), screen.frame_number(), cliprect);
+	la_commands.seed_priority(screen.priority());
+	la_commands.undefined_color();
 	int upright_mode = ioport("IN0")->read() & 0x80;
 
 	/* if the cocktail/upright switch flipped, force refresh */
@@ -479,12 +488,17 @@ uint32_t centiped_state::screen_update_warlords(screen_device &screen, bitmap_in
 
 		m_gfxdecode->gfx(1)->transpen(bitmap, cliprect, code, color, flipx, flipy, x, y, 0);
 	}
+	la_commands.finish(bitmap, screen.priority());
+	la_commands.capture_palette(bitmap, *m_palette);
 	return 0;
 }
 
 
 uint32_t centiped_state::screen_update_bullsdrt(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
+	livingarcade_raster_command::scope la_commands(bitmap, screen.priority(), screen.frame_number(), cliprect);
+	la_commands.seed_priority(screen.priority());
+	la_commands.undefined_color();
 	rectangle spriteclip = cliprect;
 
 	/* draw the background */
@@ -507,6 +521,8 @@ uint32_t centiped_state::screen_update_bullsdrt(screen_device &screen, bitmap_in
 
 		m_gfxdecode->gfx(1)->transpen(bitmap, spriteclip, code, color & 0x3f, 1, flipy, x, y, 0);
 	}
+	la_commands.finish(bitmap, screen.priority());
+	la_commands.capture_palette(bitmap, *m_palette);
 	return 0;
 }
 
@@ -516,6 +532,9 @@ uint32_t centiped_state::screen_update_bullsdrt(screen_device &screen, bitmap_in
  */
 uint32_t centiped_state::screen_update_milliped(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
+	livingarcade_raster_command::scope la_commands(bitmap, screen.priority(), screen.frame_number(), cliprect);
+	la_commands.seed_priority(screen.priority());
+	la_commands.undefined_color();
 	rectangle spriteclip = cliprect;
 
 	/* draw the background */
@@ -542,5 +561,7 @@ uint32_t centiped_state::screen_update_milliped(screen_device &screen, bitmap_in
 
 		m_gfxdecode->gfx(1)->transmask(bitmap, spriteclip, code, color, flipx, flipy, x, y, m_penmask[color & 0x3f]);
 	}
+	la_commands.finish(bitmap, screen.priority());
+	la_commands.capture_palette(bitmap, *m_palette);
 	return 0;
 }
