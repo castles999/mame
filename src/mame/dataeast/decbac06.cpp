@@ -69,6 +69,7 @@ Priority word (Midres):
 */
 
 #include "emu.h"
+#include "livingarcade_raster_command.h"
 #include "decbac06.h"
 
 #include <algorithm>
@@ -331,6 +332,8 @@ void deco_bac06_device::custom_tilemap_draw(bitmap_ind16 &bitmap,
 			src_x = (src_bitmap.width() - 256) - src_x;
 
 		src_x += cliprect.left();
+		auto *la = livingarcade_raster_command::active;
+		const bool la_row = la && la->sampled_tile_row(bitmap, primap, cliprect.left(), y, cliprect.right()+1, (u32(pmask)<<8)|pri);
 		for (int x = cliprect.left(); x <= cliprect.right(); x++)
 		{
 			int column_offset = 0;
@@ -345,6 +348,12 @@ void deco_bac06_device::custom_tilemap_draw(bitmap_ind16 &bitmap,
 					((colpri & TILEMAP_PIXEL_LAYER1) && (flags & TILEMAP_DRAW_LAYER1)) ||
 					((colpri & TILEMAP_PIXEL_LAYER2) && (flags & TILEMAP_DRAW_LAYER2)));
 
+			if (la_row)
+			{
+				const bool selected = is_drawn && ((flags & TILEMAP_DRAW_ALL_CATEGORIES) || ((colpri & TILEMAP_DRAW_CATEGORY_MASK) == (flags & TILEMAP_DRAW_CATEGORY_MASK)));
+				la->put(p, 2);
+				la->put(selected ? 1 : 0, 1);
+			}
 			src_x++;
 			if (is_drawn)
 			{
