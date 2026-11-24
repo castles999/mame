@@ -7,6 +7,7 @@ Namco System 86 Video Hardware
 *******************************************************************/
 
 #include "emu.h"
+#include "livingarcade_raster_command.h"
 #include "namcos86.h"
 
 #include "video/resnet.h"
@@ -168,11 +169,14 @@ u32 namcos86_state::sprite_bank_cb(u32 code, u32 bank)
 
 u32 namcos86_state::screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
+	livingarcade_raster_command::scope la_commands(bitmap, screen.priority(), screen.frame_number(), cliprect);
 	m_tilegen[0]->init_scroll(flip_screen());
 	m_tilegen[1]->init_scroll(flip_screen());
 
+	livingarcade_raster_command::clear(2, 0);
 	screen.priority().fill(0, cliprect);
 
+	livingarcade_raster_command::clear(1, m_tilegen[0]->gfx(0)->colorbase() + 8*m_backcolor+7);
 	bitmap.fill(m_tilegen[0]->gfx(0)->colorbase() + 8*m_backcolor+7, cliprect);
 
 	for (int layer = 0; layer < 8; layer++)
@@ -185,6 +189,8 @@ u32 namcos86_state::screen_update(screen_device &screen, bitmap_ind16 &bitmap, c
 	}
 
 	m_spritegen->draw_sprites(screen, bitmap, cliprect);
+	la_commands.finish(bitmap, screen.priority());
+	la_commands.capture_palette(bitmap, *m_palette);
 	return 0;
 }
 
