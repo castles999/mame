@@ -29,6 +29,7 @@
 *****************************************************************************/
 
 #include "emu.h"
+#include "livingarcade_raster_command.h"
 #include "m90.h"
 #include "screen.h"
 
@@ -251,6 +252,7 @@ void m90_state::bootleg_video_w(offs_t offset, uint16_t data, uint16_t mem_mask)
 
 uint32_t m90_state::screen_update_m90(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
+	livingarcade_raster_command::scope la_commands(bitmap, screen.priority(), screen.frame_number(), cliprect);
 	int const layer_ctrl[2] = { m_video_control_data[5], m_video_control_data[6] };
 
 	bool const video_enable = !(m_video_control_data[7] & 0x04);
@@ -301,14 +303,20 @@ uint32_t m90_state::screen_update_m90(screen_device &screen, bitmap_ind16 &bitma
 
 	if (!video_enable)
 	{
+		la_commands.seed_priority(screen.priority());
+		livingarcade_raster_command::clear(1, m_palette->black_pen());
 		bitmap.fill(m_palette->black_pen(), cliprect);
+		la_commands.finish(bitmap, screen.priority());
+		la_commands.capture_palette(bitmap, *m_palette);
 		return 0;
 	}
 
+	livingarcade_raster_command::clear(2, 0);
 	screen.priority().fill(0, cliprect);
 
 	if (pf_enable[1])
 	{
+		la_commands.undefined_color();
 		// use the playfield 2 y-offset table for each scanline
 		if (layer_ctrl[1] & 0x40)
 		{
@@ -352,6 +360,7 @@ uint32_t m90_state::screen_update_m90(screen_device &screen, bitmap_ind16 &bitma
 	}
 	else
 	{
+		livingarcade_raster_command::clear(1, 0);
 		bitmap.fill(0, cliprect);
 	}
 
@@ -401,12 +410,17 @@ uint32_t m90_state::screen_update_m90(screen_device &screen, bitmap_ind16 &bitma
 
 	draw_sprites(screen,bitmap,cliprect);
 
+	la_commands.finish(bitmap, screen.priority());
+	la_commands.capture_palette(bitmap, *m_palette);
 	return 0;
 }
 
 uint32_t m90_state::screen_update_bomblord(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
+	livingarcade_raster_command::scope la_commands(bitmap, screen.priority(), screen.frame_number(), cliprect);
+	livingarcade_raster_command::clear(2, 0);
 	screen.priority().fill(0, cliprect);
+	livingarcade_raster_command::clear(1, m_palette->black_pen());
 	bitmap.fill(m_palette->black_pen(), cliprect);
 
 	/* Setup scrolling */
@@ -462,12 +476,17 @@ uint32_t m90_state::screen_update_bomblord(screen_device &screen, bitmap_ind16 &
 
 	bomblord_draw_sprites(screen,bitmap,cliprect);
 
+	la_commands.finish(bitmap, screen.priority());
+	la_commands.capture_palette(bitmap, *m_palette);
 	return 0;
 }
 
 uint32_t m90_state::screen_update_dynablsb(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
+	livingarcade_raster_command::scope la_commands(bitmap, screen.priority(), screen.frame_number(), cliprect);
+	livingarcade_raster_command::clear(2, 0);
 	screen.priority().fill(0, cliprect);
+	livingarcade_raster_command::clear(1, m_palette->black_pen());
 	bitmap.fill(m_palette->black_pen(), cliprect);
 
 	if (!(m_video_data[0xf008/2] & 0x4000))
@@ -510,5 +529,7 @@ uint32_t m90_state::screen_update_dynablsb(screen_device &screen, bitmap_ind16 &
 
 	dynablsb_draw_sprites(screen,bitmap,cliprect);
 
+	la_commands.finish(bitmap, screen.priority());
+	la_commands.capture_palette(bitmap, *m_palette);
 	return 0;
 }
