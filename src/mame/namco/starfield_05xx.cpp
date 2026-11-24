@@ -480,6 +480,7 @@
 
 
 #include "emu.h"
+#include "livingarcade_raster_command.h"
 #include "starfield_05xx.h"
 
 
@@ -642,6 +643,7 @@ void starfield_05xx_device::draw_starfield(bitmap_ind16 &bitmap, const rectangle
 							color |= (m_lfsr<<2)&0x20;
 							color = (~color)&0x3F;
 
+							livingarcade_raster_command::point(bitmap, dx, y, STARS_COLOR_BASE + color);
 							bitmap.pix(y, dx) = STARS_COLOR_BASE + color;
 						}
 					}
