@@ -1,6 +1,7 @@
 // license:BSD-3-Clause
 // copyright-holders:Nicola Salmoria
 #include "emu.h"
+#include "livingarcade_raster_command.h"
 #include "video/resnet.h"
 #include "mappy.h"
 
@@ -522,6 +523,9 @@ uint32_t mappy_state::screen_update_superpac(screen_device &screen, bitmap_ind16
 
 uint32_t phozon_state::screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
+	livingarcade_raster_command::scope la_commands(bitmap, screen.priority(), screen.frame_number(), cliprect);
+	la_commands.seed_priority(screen.priority());
+	la_commands.undefined_color();
 	/* flip screen control is embedded in RAM */
 	flip_screen_set(BIT(m_spriteram[0x1f7f-0x800], 0));
 
@@ -531,11 +535,16 @@ uint32_t phozon_state::screen_update(screen_device &screen, bitmap_ind16 &bitmap
 
 	/* Redraw the high priority characters */
 	m_bg_tilemap->draw(screen, bitmap, cliprect, 1,0);
+	la_commands.finish(bitmap, screen.priority());
+	la_commands.capture_palette(bitmap, *m_palette);
 	return 0;
 }
 
 uint32_t mappy_state::screen_update_mappy(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
+	livingarcade_raster_command::scope la_commands(bitmap, screen.priority(), screen.frame_number(), cliprect);
+	la_commands.seed_priority(screen.priority());
+	la_commands.undefined_color();
 	for (int offs = 2; offs < 34; offs++)
 		m_bg_tilemap->set_scrolly(offs,m_scroll);
 
@@ -545,5 +554,7 @@ uint32_t mappy_state::screen_update_mappy(screen_device &screen, bitmap_ind16 &b
 
 	/* Redraw the high priority characters */
 	m_bg_tilemap->draw(screen, bitmap, cliprect, 1,0);
+	la_commands.finish(bitmap, screen.priority());
+	la_commands.capture_palette(bitmap, *m_palette);
 	return 0;
 }
