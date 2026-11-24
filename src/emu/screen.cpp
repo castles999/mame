@@ -1793,9 +1793,15 @@ bool screen_device::update_quads()
 					create_composited_bitmap();
 				}
 				if (m_is_primary_screen && !(m_video_attributes & VIDEO_VARIABLE_WIDTH) && m_bitmap[m_curbitmap].format() == BITMAP_FORMAT_IND16 && m_palette)
+				{
 					livingarcade_raster_command::present_witness(m_bitmap[m_curbitmap].as_ind16(), *m_palette, frame_number(), m_visarea);
+					livingarcade_raster_command::exact_indexed_present(m_bitmap[m_curbitmap].as_ind16(), *m_palette, frame_number(), m_visarea);
+				}
 				if (m_is_primary_screen && !(m_video_attributes & VIDEO_VARIABLE_WIDTH) && m_bitmap[m_curbitmap].format() == BITMAP_FORMAT_RGB32)
+				{
 					livingarcade_scanline_command::frame_witness(m_bitmap[m_curbitmap].as_rgb32(), frame_number(), m_visarea);
+					livingarcade_raster_command::exact_rgb_present(m_bitmap[m_curbitmap].as_rgb32(), frame_number(), m_visarea);
+				}
 				m_texture[m_curbitmap]->set_bitmap(m_bitmap[m_curbitmap], m_visarea, m_bitmap[m_curbitmap].texformat());
 				m_curtexture = m_curbitmap;
 				m_curbitmap = 1 - m_curbitmap;
