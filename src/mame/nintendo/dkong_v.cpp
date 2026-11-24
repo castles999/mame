@@ -10,6 +10,7 @@
 ***************************************************************************/
 
 #include "emu.h"
+#include "livingarcade_raster_command.h"
 #include "video/resnet.h"
 #include "dkong.h"
 
@@ -964,6 +965,9 @@ VIDEO_START_MEMBER(dkong_state,dkong)
 
 uint32_t dkong_state::screen_update_dkong(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
+	livingarcade_raster_command::scope la_commands(bitmap, screen.priority(), screen.frame_number(), cliprect);
+	la_commands.seed_priority(screen.priority());
+	la_commands.undefined_color();
 	machine().tilemap().set_flip_all(m_flip ? TILEMAP_FLIPX | TILEMAP_FLIPY : 0);
 
 	switch (m_hardware_type)
@@ -978,16 +982,22 @@ uint32_t dkong_state::screen_update_dkong(screen_device &screen, bitmap_ind16 &b
 		case HARDWARE_TRS02:
 			m_bg_tilemap->draw(screen, bitmap, cliprect, 0, 0);
 			draw_sprites(bitmap, cliprect, 0x40, 1);
+			livingarcade_raster_command::unsupported(); // radar analog background is not covered yet
 			radarscp_draw_background(bitmap, cliprect);
 			break;
 		default:
 			fatalerror("Invalid hardware type in dkong_video_update\n");
 	}
+	la_commands.finish(bitmap, screen.priority());
+	la_commands.capture_palette(bitmap, *m_palette);
 	return 0;
 }
 
 uint32_t dkong_state::screen_update_pestplce(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
+	livingarcade_raster_command::scope la_commands(bitmap, screen.priority(), screen.frame_number(), cliprect);
+	la_commands.seed_priority(screen.priority());
+	la_commands.undefined_color();
 	machine().tilemap().set_flip_all(m_flip ? TILEMAP_FLIPX | TILEMAP_FLIPY : 0);
 	m_bg_tilemap->draw(screen, bitmap, cliprect, 0, 0);
 
@@ -1010,15 +1020,22 @@ uint32_t dkong_state::screen_update_pestplce(screen_device &screen, bitmap_ind16
 					m_sprite_ram[offs + 3] - 8,240 - m_sprite_ram[offs] + 8,0);
 		}
 	}
+	la_commands.finish(bitmap, screen.priority());
+	la_commands.capture_palette(bitmap, *m_palette);
 	return 0;
 }
 
 uint32_t dkong_state::screen_update_spclforc(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
+	livingarcade_raster_command::scope la_commands(bitmap, screen.priority(), screen.frame_number(), cliprect);
+	la_commands.seed_priority(screen.priority());
+	la_commands.undefined_color();
 	machine().tilemap().set_flip_all(m_flip ? TILEMAP_FLIPX | TILEMAP_FLIPY : 0);
 	m_bg_tilemap->draw(screen, bitmap, cliprect, 0, 0);
 
 	/* it uses sprite_ram[offs + 2] & 0x10 for sprite bank */
 	draw_sprites(bitmap, cliprect, 0x10, 3);
+	la_commands.finish(bitmap, screen.priority());
+	la_commands.capture_palette(bitmap, *m_palette);
 	return 0;
 }
