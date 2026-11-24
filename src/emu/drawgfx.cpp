@@ -353,7 +353,7 @@ void gfx_element::opaque(bitmap_ind16 &dest, const rectangle &cliprect,
 		u32 code, u32 color, int flipx, int flipy, s32 destx, s32 desty)
 {
 	livingarcade_raster_probe::gfx_entry(&dest, false, false, false);
-	livingarcade_raster_command::unsupported();
+	livingarcade_raster_command::plain_sprite_guard la_sprite(*this, dest, cliprect, code, color, flipx, flipy, destx, desty, 0);
 	color = colorbase() + granularity() * (color % colors());
 	code %= elements();
 	drawgfx_core(dest, cliprect, code, flipx, flipy, destx, desty, [color](u16 &destp, const u8 &srcp) { PIXEL_OP_REBASE_OPAQUE(destp, srcp); });
@@ -380,7 +380,7 @@ void gfx_element::transpen(bitmap_ind16 &dest, const rectangle &cliprect,
 		u32 trans_pen)
 {
 	livingarcade_raster_probe::gfx_entry(&dest, false, false, false);
-	livingarcade_raster_command::unsupported();
+	livingarcade_raster_command::plain_sprite_guard la_sprite(*this, dest, cliprect, code, color, flipx, flipy, destx, desty, trans_pen<32 ? (u32(1)<<trans_pen) : 0);
 	// special case invalid pens to opaque
 	if (trans_pen > 0xff)
 		return opaque(dest, cliprect, code, color, flipx, flipy, destx, desty);
@@ -482,7 +482,7 @@ void gfx_element::transmask(bitmap_ind16 &dest, const rectangle &cliprect,
 		u32 trans_mask)
 {
 	livingarcade_raster_probe::gfx_entry(&dest, false, false, false);
-	livingarcade_raster_command::unsupported();
+	livingarcade_raster_command::plain_sprite_guard la_sprite(*this, dest, cliprect, code, color, flipx, flipy, destx, desty, trans_mask);
 	// special case 0 mask to opaque
 	if (trans_mask == 0)
 		return opaque(dest, cliprect, code, color, flipx, flipy, destx, desty);
