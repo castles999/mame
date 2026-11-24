@@ -16,6 +16,7 @@ Notes:
 ***************************************************************************/
 
 #include "emu.h"
+#include "livingarcade_raster_command.h"
 
 #include "cpu/m6800/m6801.h"
 #include "cpu/m6809/m6809.h"
@@ -318,6 +319,9 @@ void skykid_state::draw_sprites(bitmap_ind16 &bitmap,const rectangle &cliprect)
 
 uint32_t skykid_state::screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
+	livingarcade_raster_command::scope la_commands(bitmap, screen.priority(), screen.frame_number(), cliprect);
+	la_commands.seed_priority(screen.priority());
+	la_commands.undefined_color();
 	if (flip_screen())
 	{
 		m_bg_tilemap->set_scrollx(0, 189 - (m_scroll_x ^ 1));
@@ -351,6 +355,8 @@ uint32_t skykid_state::screen_update(screen_device &screen, bitmap_ind16 &bitmap
 		m_tx_tilemap->draw(screen, bitmap, cliprect, TILEMAP_DRAW_ALL_CATEGORIES, 0);
 	}
 
+	la_commands.finish(bitmap, screen.priority());
+	la_commands.capture_palette(bitmap, *m_palette);
 	return 0;
 }
 
