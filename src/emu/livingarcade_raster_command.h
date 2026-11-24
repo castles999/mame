@@ -56,6 +56,66 @@ inline bool snapshot_colors(const Palette &palette,std::vector<u32> &colors){
     for(u32 i=0;i<n;++i)colors.push_back(u32(adjusted[i])&0xffffff);
     return true;
 }
+// Optional private exact witness. It is deliberately separate from the
+// command stream and contains only pre-OSD reference pixels, never media
+// for distribution. Both capture and reference-only runs may enable it.
+inline writer &exact_output(){static writer w("LIVINGARCADE_EXACT_PRESENT","LARX0001");return w;}
+inline void exact_record(writer &o,u64 frame,int w,int h,int l,int t,int r,int b,
+                         u32 kind,u32 status,const std::vector<u8> &pixels){
+    if(o.bytes+48+pixels.size()+12>max_file){o.capped=true;return;}
+    o.write("PIX1",4);o.integer(frame,8);
+    for(int v:{w,h,l,t,r,b})o.integer(u32(v),4);
+    o.integer(kind,4);o.integer(status,4);o.integer(pixels.size(),4);
+    o.write(pixels.data(),pixels.size());
+    ++o.count;if(std::fflush(o.f)!=0)o.failed=true;
+}
+template<class Bitmap,class Palette,class Rect>
+inline void exact_indexed_present(const Bitmap &dest,const Palette &palette,u64 frame,const Rect &clip){
+    auto &o=exact_output();
+    if(!o.f||o.failed||o.capped)return;
+    if(o.count>=max_updates){o.capped=true;return;}
+    const int w=dest.width(),h=dest.height(),l=clip.left(),t=clip.top(),r=clip.right()+1,b=clip.bottom()+1;
+    u32 status=0;
+    if(!dest.valid()||w<=0||h<=0||w>1024||h>1024||l<0||t<0||r>w||b>h||l>=r||t>=b)status=1;
+    std::vector<u32> colors;
+    if(!status&&!snapshot_colors(palette,colors))status=32;
+    std::vector<u8> pixels;
+    if(!status){
+        const u64 size=5*u64(r-l)*(b-t);
+        if(o.bytes+48+size+12>max_file){o.capped=true;return;}
+        pixels.reserve(size);
+        for(int y=t;y<b&&!status;++y)for(int x=l;x<r;++x){
+            const u32 pen=dest.pix(y,x);
+            if(pen>=colors.size()){status=32;break;}
+            const u32 rgb=colors[pen];
+            pixels.push_back(u8(pen));pixels.push_back(u8(pen>>8));
+            pixels.push_back(u8(rgb>>16));pixels.push_back(u8(rgb>>8));pixels.push_back(u8(rgb));
+        }
+    }
+    if(status)pixels.clear();
+    exact_record(o,frame,w,h,l,t,r,b,1,status,pixels);
+}
+template<class Bitmap,class Rect>
+inline void exact_rgb_present(const Bitmap &dest,u64 frame,const Rect &clip){
+    auto &o=exact_output();
+    if(!o.f||o.failed||o.capped)return;
+    if(o.count>=max_updates){o.capped=true;return;}
+    const int w=dest.width(),h=dest.height(),l=clip.left(),t=clip.top(),r=clip.right()+1,b=clip.bottom()+1;
+    u32 status=0;
+    if(!dest.valid()||w<=0||h<=0||w>1024||h>1024||l<0||t<0||r>w||b>h||l>=r||t>=b)status=1;
+    std::vector<u8> pixels;
+    if(!status){
+        const u64 size=4*u64(r-l)*(b-t);
+        if(o.bytes+48+size+12>max_file){o.capped=true;return;}
+        pixels.reserve(size);
+        for(int y=t;y<b;++y)for(int x=l;x<r;++x){
+            const u32 rgb=dest.pix(y,x);
+            for(unsigned i=0;i<4;++i)pixels.push_back(u8(rgb>>(8*i)));
+        }
+    }
+    exact_record(o,frame,w,h,l,t,r,b,2,status,pixels);
+}
+
 // Independent witness of the indexed texture source just before set_bitmap.
 // Not the post-OSD, scaled, CRT-filtered, brightness-modulated display image.
 template<class Bitmap,class Palette,class Rect>
