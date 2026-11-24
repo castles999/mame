@@ -9,6 +9,7 @@
 *********************************************************************/
 
 #include "emu.h"
+#include "livingarcade_raster_probe.h"
 #include "drawgfxt.ipp"
 
 
@@ -350,6 +351,7 @@ void gfx_element::decode(u32 code)
 void gfx_element::opaque(bitmap_ind16 &dest, const rectangle &cliprect,
 		u32 code, u32 color, int flipx, int flipy, s32 destx, s32 desty)
 {
+	livingarcade_raster_probe::gfx_entry(&dest, false, false, false);
 	color = colorbase() + granularity() * (color % colors());
 	code %= elements();
 	drawgfx_core(dest, cliprect, code, flipx, flipy, destx, desty, [color](u16 &destp, const u8 &srcp) { PIXEL_OP_REBASE_OPAQUE(destp, srcp); });
@@ -358,6 +360,7 @@ void gfx_element::opaque(bitmap_ind16 &dest, const rectangle &cliprect,
 void gfx_element::opaque(bitmap_rgb32 &dest, const rectangle &cliprect,
 		u32 code, u32 color, int flipx, int flipy, s32 destx, s32 desty)
 {
+	livingarcade_raster_probe::gfx_entry(&dest, false, false, true);
 	const pen_t *paldata = m_palette->pens() + colorbase() + granularity() * (color % colors());
 	code %= elements();
 	drawgfx_core(dest, cliprect, code, flipx, flipy, destx, desty, [paldata](u32 &destp, const u8 &srcp) { PIXEL_OP_REMAP_OPAQUE(destp, srcp); });
@@ -373,6 +376,7 @@ void gfx_element::transpen(bitmap_ind16 &dest, const rectangle &cliprect,
 		u32 code, u32 color, int flipx, int flipy, s32 destx, s32 desty,
 		u32 trans_pen)
 {
+	livingarcade_raster_probe::gfx_entry(&dest, false, false, false);
 	// special case invalid pens to opaque
 	if (trans_pen > 0xff)
 		return opaque(dest, cliprect, code, color, flipx, flipy, destx, desty);
@@ -400,6 +404,7 @@ void gfx_element::transpen(bitmap_rgb32 &dest, const rectangle &cliprect,
 		u32 code, u32 color, int flipx, int flipy, s32 destx, s32 desty,
 		u32 trans_pen)
 {
+	livingarcade_raster_probe::gfx_entry(&dest, false, false, true);
 	// special case invalid pens to opaque
 	if (trans_pen > 0xff)
 		return opaque(dest, cliprect, code, color, flipx, flipy, destx, desty);
@@ -434,6 +439,7 @@ void gfx_element::transpen_raw(bitmap_ind16 &dest, const rectangle &cliprect,
 		u32 code, u32 color, int flipx, int flipy, s32 destx, s32 desty,
 		u32 trans_pen)
 {
+	livingarcade_raster_probe::gfx_entry(&dest, false, false, false);
 	// early out if completely transparent
 	code %= elements();
 	if (has_pen_usage() && (pen_usage(code) & ~(1 << trans_pen)) == 0)
@@ -447,6 +453,7 @@ void gfx_element::transpen_raw(bitmap_rgb32 &dest, const rectangle &cliprect,
 		u32 code, u32 color, int flipx, int flipy, s32 destx, s32 desty,
 		u32 trans_pen)
 {
+	livingarcade_raster_probe::gfx_entry(&dest, false, false, true);
 	// early out if completely transparent
 	code %= elements();
 	if (has_pen_usage() && (pen_usage(code) & ~(1 << trans_pen)) == 0)
@@ -467,6 +474,7 @@ void gfx_element::transmask(bitmap_ind16 &dest, const rectangle &cliprect,
 		u32 code, u32 color, int flipx, int flipy, s32 destx, s32 desty,
 		u32 trans_mask)
 {
+	livingarcade_raster_probe::gfx_entry(&dest, false, false, false);
 	// special case 0 mask to opaque
 	if (trans_mask == 0)
 		return opaque(dest, cliprect, code, color, flipx, flipy, destx, desty);
@@ -494,6 +502,7 @@ void gfx_element::transmask(bitmap_rgb32 &dest, const rectangle &cliprect,
 		u32 code, u32 color, int flipx, int flipy, s32 destx, s32 desty,
 		u32 trans_mask)
 {
+	livingarcade_raster_probe::gfx_entry(&dest, false, false, true);
 	// special case 0 mask to opaque
 	if (trans_mask == 0)
 		return opaque(dest, cliprect, code, color, flipx, flipy, destx, desty);
@@ -528,6 +537,7 @@ void gfx_element::transtable(bitmap_ind16 &dest, const rectangle &cliprect,
 		u32 code, u32 color, int flipx, int flipy, s32 destx, s32 desty,
 		const u8 *pentable)
 {
+	livingarcade_raster_probe::gfx_entry(&dest, false, false, false);
 	assert(pentable != nullptr);
 
 	// render
@@ -541,6 +551,7 @@ void gfx_element::transtable(bitmap_rgb32 &dest, const rectangle &cliprect,
 		u32 code, u32 color, int flipx, int flipy, s32 destx, s32 desty,
 		const u8 *pentable)
 {
+	livingarcade_raster_probe::gfx_entry(&dest, false, false, true);
 	assert(pentable != nullptr);
 
 	// render
@@ -561,6 +572,7 @@ void gfx_element::alpha(bitmap_rgb32 &dest, const rectangle &cliprect,
 		u32 code, u32 color, int flipx, int flipy, s32 destx, s32 desty,
 		u32 trans_pen, u8 alpha_val)
 {
+	livingarcade_raster_probe::gfx_entry(&dest, false, false, true);
 	// special case alpha = 0xff
 	if (alpha_val == 0xff)
 		return transpen(dest, cliprect, code, color, flipx, flipy, destx, desty, trans_pen);
@@ -590,6 +602,7 @@ void gfx_element::zoom_opaque(bitmap_ind16 &dest, const rectangle &cliprect,
 		u32 code, u32 color, int flipx, int flipy, s32 destx, s32 desty,
 		u32 scalex, u32 scaley)
 {
+	livingarcade_raster_probe::gfx_entry(&dest, false, true, false);
 	// non-zoom case
 	if (scalex == 0x10000 && scaley == 0x10000)
 		return opaque(dest, cliprect, code, color, flipx, flipy, destx, desty);
@@ -604,6 +617,7 @@ void gfx_element::zoom_opaque(bitmap_rgb32 &dest, const rectangle &cliprect,
 		u32 code, u32 color, int flipx, int flipy, s32 destx, s32 desty,
 		u32 scalex, u32 scaley)
 {
+	livingarcade_raster_probe::gfx_entry(&dest, false, true, true);
 	// non-zoom case
 	if (scalex == 0x10000 && scaley == 0x10000)
 		return opaque(dest, cliprect, code, color, flipx, flipy, destx, desty);
@@ -624,6 +638,7 @@ void gfx_element::zoom_transpen(bitmap_ind16 &dest, const rectangle &cliprect,
 		u32 code, u32 color, int flipx, int flipy, s32 destx, s32 desty,
 		u32 scalex, u32 scaley, u32 trans_pen)
 {
+	livingarcade_raster_probe::gfx_entry(&dest, false, true, false);
 	// non-zoom case
 	if (scalex == 0x10000 && scaley == 0x10000)
 		return transpen(dest, cliprect, code, color, flipx, flipy, destx, desty, trans_pen);
@@ -655,6 +670,7 @@ void gfx_element::zoom_transpen(bitmap_rgb32 &dest, const rectangle &cliprect,
 		u32 code, u32 color, int flipx, int flipy, s32 destx, s32 desty,
 		u32 scalex, u32 scaley, u32 trans_pen)
 {
+	livingarcade_raster_probe::gfx_entry(&dest, false, true, true);
 	// non-zoom case
 	if (scalex == 0x10000 && scaley == 0x10000)
 		return transpen(dest, cliprect, code, color, flipx, flipy, destx, desty, trans_pen);
@@ -693,6 +709,7 @@ void gfx_element::zoom_transpen_raw(bitmap_ind16 &dest, const rectangle &cliprec
 		u32 code, u32 color, int flipx, int flipy, s32 destx, s32 desty,
 		u32 scalex, u32 scaley, u32 trans_pen)
 {
+	livingarcade_raster_probe::gfx_entry(&dest, false, true, false);
 	// non-zoom case
 	if (scalex == 0x10000 && scaley == 0x10000)
 		return transpen_raw(dest, cliprect, code, color, flipx, flipy, destx, desty, trans_pen);
@@ -710,6 +727,7 @@ void gfx_element::zoom_transpen_raw(bitmap_rgb32 &dest, const rectangle &cliprec
 		u32 code, u32 color, int flipx, int flipy, s32 destx, s32 desty,
 		u32 scalex, u32 scaley, u32 trans_pen)
 {
+	livingarcade_raster_probe::gfx_entry(&dest, false, true, true);
 	// non-zoom case
 	if (scalex == 0x10000 && scaley == 0x10000)
 		return transpen_raw(dest, cliprect, code, color, flipx, flipy, destx, desty, trans_pen);
@@ -734,6 +752,7 @@ void gfx_element::zoom_transmask(bitmap_ind16 &dest, const rectangle &cliprect,
 		u32 code, u32 color, int flipx, int flipy, s32 destx, s32 desty,
 		u32 scalex, u32 scaley, u32 trans_mask)
 {
+	livingarcade_raster_probe::gfx_entry(&dest, false, true, false);
 	// non-zoom case
 	if (scalex == 0x10000 && scaley == 0x10000)
 		return transmask(dest, cliprect, code, color, flipx, flipy, destx, desty, trans_mask);
@@ -765,6 +784,7 @@ void gfx_element::zoom_transmask(bitmap_rgb32 &dest, const rectangle &cliprect,
 		u32 code, u32 color, int flipx, int flipy, s32 destx, s32 desty,
 		u32 scalex, u32 scaley, u32 trans_mask)
 {
+	livingarcade_raster_probe::gfx_entry(&dest, false, true, true);
 	// non-zoom case
 	if (scalex == 0x10000 && scaley == 0x10000)
 		return transmask(dest, cliprect, code, color, flipx, flipy, destx, desty, trans_mask);
@@ -803,6 +823,7 @@ void gfx_element::zoom_transtable(bitmap_ind16 &dest, const rectangle &cliprect,
 		u32 code, u32 color, int flipx, int flipy, s32 destx, s32 desty,
 		u32 scalex, u32 scaley, const u8 *pentable)
 {
+	livingarcade_raster_probe::gfx_entry(&dest, false, true, false);
 	assert(pentable != nullptr);
 
 	// non-zoom case
@@ -820,6 +841,7 @@ void gfx_element::zoom_transtable(bitmap_rgb32 &dest, const rectangle &cliprect,
 		u32 code, u32 color, int flipx, int flipy, s32 destx, s32 desty,
 		u32 scalex, u32 scaley, const u8 *pentable)
 {
+	livingarcade_raster_probe::gfx_entry(&dest, false, true, true);
 	assert(pentable != nullptr);
 
 	// non-zoom case
@@ -844,6 +866,7 @@ void gfx_element::zoom_alpha(bitmap_rgb32 &dest, const rectangle &cliprect,
 		u32 code, u32 color, int flipx, int flipy, s32 destx, s32 desty,
 		u32 scalex, u32 scaley, u32 trans_pen, u8 alpha_val)
 {
+	livingarcade_raster_probe::gfx_entry(&dest, false, true, true);
 	// non-zoom case
 	if (scalex == 0x10000 && scaley == 0x10000)
 		return alpha(dest, cliprect, code, color, flipx, flipy, destx, desty, trans_pen, alpha_val);
@@ -878,6 +901,7 @@ void gfx_element::prio_opaque(bitmap_ind16 &dest, const rectangle &cliprect,
 		u32 code, u32 color, int flipx, int flipy, s32 destx, s32 desty,
 		bitmap_ind8 &priority, u32 pmask)
 {
+	livingarcade_raster_probe::gfx_entry(&dest, true, false, false);
 	// high bit of the mask is implicitly on
 	pmask |= 1 << 31;
 
@@ -891,6 +915,7 @@ void gfx_element::prio_opaque(bitmap_rgb32 &dest, const rectangle &cliprect,
 		u32 code, u32 color, int flipx, int flipy, s32 destx, s32 desty,
 		bitmap_ind8 &priority, u32 pmask)
 {
+	livingarcade_raster_probe::gfx_entry(&dest, true, false, true);
 	// high bit of the mask is implicitly on
 	pmask |= 1 << 31;
 
@@ -911,6 +936,7 @@ void gfx_element::prio_transpen(bitmap_ind16 &dest, const rectangle &cliprect,
 		u32 code, u32 color, int flipx, int flipy, s32 destx, s32 desty,
 		bitmap_ind8 &priority, u32 pmask, u32 trans_pen)
 {
+	livingarcade_raster_probe::gfx_entry(&dest, true, false, false);
 	// special case invalid pens to opaque
 	if (trans_pen > 0xff)
 		return prio_opaque(dest, cliprect, code, color, flipx, flipy, destx, desty, priority, pmask);
@@ -941,6 +967,7 @@ void gfx_element::prio_transpen(bitmap_rgb32 &dest, const rectangle &cliprect,
 		u32 code, u32 color, int flipx, int flipy, s32 destx, s32 desty,
 		bitmap_ind8 &priority, u32 pmask, u32 trans_pen)
 {
+	livingarcade_raster_probe::gfx_entry(&dest, true, false, true);
 	// special case invalid pens to opaque
 	if (trans_pen > 0xff)
 		return prio_opaque(dest, cliprect, code, color, flipx, flipy, destx, desty, priority, pmask);
@@ -978,6 +1005,7 @@ void gfx_element::prio_transpen_raw(bitmap_ind16 &dest, const rectangle &cliprec
 		u32 code, u32 color, int flipx, int flipy, s32 destx, s32 desty,
 		bitmap_ind8 &priority, u32 pmask, u32 trans_pen)
 {
+	livingarcade_raster_probe::gfx_entry(&dest, true, false, false);
 	// early out if completely transparent
 	code %= elements();
 	if (has_pen_usage() && (pen_usage(code) & ~(1 << trans_pen)) == 0)
@@ -994,6 +1022,7 @@ void gfx_element::prio_transpen_raw(bitmap_rgb32 &dest, const rectangle &cliprec
 		u32 code, u32 color, int flipx, int flipy, s32 destx, s32 desty,
 		bitmap_ind8 &priority, u32 pmask, u32 trans_pen)
 {
+	livingarcade_raster_probe::gfx_entry(&dest, true, false, true);
 	// early out if completely transparent
 	code %= elements();
 	if (has_pen_usage() && (pen_usage(code) & ~(1 << trans_pen)) == 0)
@@ -1017,6 +1046,7 @@ void gfx_element::prio_transmask(bitmap_ind16 &dest, const rectangle &cliprect,
 		u32 code, u32 color, int flipx, int flipy, s32 destx, s32 desty,
 		bitmap_ind8 &priority, u32 pmask, u32 trans_mask)
 {
+	livingarcade_raster_probe::gfx_entry(&dest, true, false, false);
 	// special case 0 mask to opaque
 	if (trans_mask == 0)
 		return prio_opaque(dest, cliprect, code, color, flipx, flipy, destx, desty, priority, pmask);
@@ -1047,6 +1077,7 @@ void gfx_element::prio_transmask(bitmap_rgb32 &dest, const rectangle &cliprect,
 		u32 code, u32 color, int flipx, int flipy, s32 destx, s32 desty,
 		bitmap_ind8 &priority, u32 pmask, u32 trans_mask)
 {
+	livingarcade_raster_probe::gfx_entry(&dest, true, false, true);
 	// special case 0 mask to opaque
 	if (trans_mask == 0)
 		return prio_opaque(dest, cliprect, code, color, flipx, flipy, destx, desty, priority, pmask);
@@ -1085,6 +1116,7 @@ void gfx_element::prio_transtable(bitmap_ind16 &dest, const rectangle &cliprect,
 		u32 code, u32 color, int flipx, int flipy, s32 destx, s32 desty,
 		bitmap_ind8 &priority, u32 pmask, const u8 *pentable)
 {
+	livingarcade_raster_probe::gfx_entry(&dest, true, false, false);
 	assert(pentable != nullptr);
 
 	// high bit of the mask is implicitly on
@@ -1101,6 +1133,7 @@ void gfx_element::prio_transtable(bitmap_rgb32 &dest, const rectangle &cliprect,
 		u32 code, u32 color, int flipx, int flipy, s32 destx, s32 desty,
 		bitmap_ind8 &priority, u32 pmask, const u8 *pentable)
 {
+	livingarcade_raster_probe::gfx_entry(&dest, true, false, true);
 	assert(pentable != nullptr);
 
 	// high bit of the mask is implicitly on
@@ -1125,6 +1158,7 @@ void gfx_element::prio_alpha(bitmap_rgb32 &dest, const rectangle &cliprect,
 		u32 code, u32 color, int flipx, int flipy, s32 destx, s32 desty,
 		bitmap_ind8 &priority, u32 pmask, u32 trans_pen, u8 alpha_val)
 {
+	livingarcade_raster_probe::gfx_entry(&dest, true, false, true);
 	// special case alpha = 0xff
 	if (alpha_val == 0xff)
 		return prio_transpen(dest, cliprect, code, color, flipx, flipy, destx, desty, priority, pmask, trans_pen);
@@ -1158,6 +1192,7 @@ void gfx_element::prio_zoom_opaque(bitmap_ind16 &dest, const rectangle &cliprect
 		u32 code, u32 color, int flipx, int flipy, s32 destx, s32 desty,
 		u32 scalex, u32 scaley, bitmap_ind8 &priority, u32 pmask)
 {
+	livingarcade_raster_probe::gfx_entry(&dest, true, true, false);
 	// non-zoom case
 	if (scalex == 0x10000 && scaley == 0x10000)
 		return prio_opaque(dest, cliprect, code, color, flipx, flipy, destx, desty, priority, pmask);
@@ -1175,6 +1210,7 @@ void gfx_element::prio_zoom_opaque(bitmap_rgb32 &dest, const rectangle &cliprect
 		u32 code, u32 color, int flipx, int flipy, s32 destx, s32 desty,
 		u32 scalex, u32 scaley, bitmap_ind8 &priority, u32 pmask)
 {
+	livingarcade_raster_probe::gfx_entry(&dest, true, true, true);
 	// non-zoom case
 	if (scalex == 0x10000 && scaley == 0x10000)
 		return prio_opaque(dest, cliprect, code, color, flipx, flipy, destx, desty, priority, pmask);
@@ -1200,6 +1236,7 @@ void gfx_element::prio_zoom_transpen(bitmap_ind16 &dest, const rectangle &clipre
 		u32 scalex, u32 scaley, bitmap_ind8 &priority, u32 pmask,
 		u32 trans_pen)
 {
+	livingarcade_raster_probe::gfx_entry(&dest, true, true, false);
 	// non-zoom case
 	if (scalex == 0x10000 && scaley == 0x10000)
 		return prio_transpen(dest, cliprect, code, color, flipx, flipy, destx, desty, priority, pmask, trans_pen);
@@ -1235,6 +1272,7 @@ void gfx_element::prio_zoom_transpen(bitmap_rgb32 &dest, const rectangle &clipre
 		u32 scalex, u32 scaley, bitmap_ind8 &priority, u32 pmask,
 		u32 trans_pen)
 {
+	livingarcade_raster_probe::gfx_entry(&dest, true, true, true);
 	// non-zoom case
 	if (scalex == 0x10000 && scaley == 0x10000)
 		return prio_transpen(dest, cliprect, code, color, flipx, flipy, destx, desty, priority, pmask, trans_pen);
@@ -1278,6 +1316,7 @@ void gfx_element::prio_zoom_transpen_raw(bitmap_ind16 &dest, const rectangle &cl
 		u32 scalex, u32 scaley, bitmap_ind8 &priority, u32 pmask,
 		u32 trans_pen)
 {
+	livingarcade_raster_probe::gfx_entry(&dest, true, true, false);
 	// non-zoom case
 	if (scalex == 0x10000 && scaley == 0x10000)
 		return prio_transpen_raw(dest, cliprect, code, color, flipx, flipy, destx, desty, priority, pmask, trans_pen);
@@ -1299,6 +1338,7 @@ void gfx_element::prio_zoom_transpen_raw(bitmap_rgb32 &dest, const rectangle &cl
 		u32 scalex, u32 scaley, bitmap_ind8 &priority, u32 pmask,
 		u32 trans_pen)
 {
+	livingarcade_raster_probe::gfx_entry(&dest, true, true, true);
 	// non-zoom case
 	if (scalex == 0x10000 && scaley == 0x10000)
 		return prio_transpen_raw(dest, cliprect, code, color, flipx, flipy, destx, desty, priority, pmask, trans_pen);
@@ -1328,6 +1368,7 @@ void gfx_element::prio_zoom_transmask(bitmap_ind16 &dest, const rectangle &clipr
 		u32 scalex, u32 scaley, bitmap_ind8 &priority, u32 pmask,
 		u32 trans_mask)
 {
+	livingarcade_raster_probe::gfx_entry(&dest, true, true, false);
 	// non-zoom case
 	if (scalex == 0x10000 && scaley == 0x10000)
 		return prio_transmask(dest, cliprect, code, color, flipx, flipy, destx, desty, priority, pmask, trans_mask);
@@ -1363,6 +1404,7 @@ void gfx_element::prio_zoom_transmask(bitmap_rgb32 &dest, const rectangle &clipr
 		u32 scalex, u32 scaley, bitmap_ind8 &priority, u32 pmask,
 		u32 trans_mask)
 {
+	livingarcade_raster_probe::gfx_entry(&dest, true, true, true);
 	// non-zoom case
 	if (scalex == 0x10000 && scaley == 0x10000)
 		return prio_transmask(dest, cliprect, code, color, flipx, flipy, destx, desty, priority, pmask, trans_mask);
@@ -1406,6 +1448,7 @@ void gfx_element::prio_zoom_transtable(bitmap_ind16 &dest, const rectangle &clip
 		u32 scalex, u32 scaley, bitmap_ind8 &priority, u32 pmask,
 		const u8 *pentable)
 {
+	livingarcade_raster_probe::gfx_entry(&dest, true, true, false);
 	assert(pentable != nullptr);
 
 	// non-zoom case
@@ -1427,6 +1470,7 @@ void gfx_element::prio_zoom_transtable(bitmap_rgb32 &dest, const rectangle &clip
 		u32 scalex, u32 scaley, bitmap_ind8 &priority, u32 pmask,
 		const u8 *pentable)
 {
+	livingarcade_raster_probe::gfx_entry(&dest, true, true, true);
 	assert(pentable != nullptr);
 
 	// non-zoom case
@@ -1457,6 +1501,7 @@ void gfx_element::prio_zoom_alpha(bitmap_rgb32 &dest, const rectangle &cliprect,
 		u32 scalex, u32 scaley, bitmap_ind8 &priority, u32 pmask,
 		u32 trans_pen, u8 alpha_val)
 {
+	livingarcade_raster_probe::gfx_entry(&dest, true, true, true);
 	// non-zoom case
 	if (scalex == 0x10000 && scaley == 0x10000)
 		return prio_alpha(dest, cliprect, code, color, flipx, flipy, destx, desty, priority, pmask, trans_pen, alpha_val);
@@ -1496,6 +1541,7 @@ void gfx_element::prio_transpen_additive(bitmap_rgb32 &dest, const rectangle &cl
 		u32 code, u32 color, int flipx, int flipy, s32 destx, s32 desty,
 		bitmap_ind8 &priority, u32 pmask, u32 trans_pen)
 {
+	livingarcade_raster_probe::gfx_entry(&dest, true, false, true);
 	const pen_t *paldata;
 
 	assert(dest.valid());
@@ -1529,6 +1575,7 @@ void gfx_element::prio_zoom_transpen_additive(bitmap_rgb32 &dest, const rectangl
 		u32 scalex, u32 scaley, bitmap_ind8 &priority, u32 pmask,
 		u32 trans_pen)
 {
+	livingarcade_raster_probe::gfx_entry(&dest, true, true, true);
 	const pen_t *paldata;
 
 	/* non-zoom case */
@@ -1603,6 +1650,7 @@ void gfx_element::alphastore(bitmap_rgb32 &dest, const rectangle &cliprect,
 		u32 code, u32 color, int flipx, int flipy, s32 destx, s32 desty,
 		int fixedalpha, u8 *alphatable)
 {
+	livingarcade_raster_probe::gfx_entry(&dest, false, false, true);
 	const pen_t *paldata;
 
 	assert(alphatable != nullptr);
@@ -1638,6 +1686,7 @@ void gfx_element::alphatable(bitmap_rgb32 &dest, const rectangle &cliprect,
 		u32 code, u32 color, int flipx, int flipy, s32 destx, s32 desty,
 		int fixedalpha, u8 *alphatable)
 {
+	livingarcade_raster_probe::gfx_entry(&dest, false, false, true);
 	const pen_t *paldata;
 
 	/* if we have a fixed alpha, call the standard drawgfx_alpha */

@@ -620,6 +620,7 @@ Stephh's inputs notes (based on some tests on the "parent" set) :
 ***************************************************************************/
 
 #include "emu.h"
+#include "livingarcade_raster_probe.h"
 
 #include "cps1.h"
 #include "cps2comm.h"
@@ -1000,12 +1001,14 @@ void cps2_state::cps2_render_sprites(screen_device &screen, bitmap_ind16 &bitmap
 
 void cps2_state::render_layers(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
+	livingarcade_raster_probe::hit(livingarcade_raster_probe::cps2_layers);
 	/* Draw layers (0 = sprites, 1-3 = tilemaps) */
 	const uint16_t layercontrol = m_cps_b_regs[m_game_config->layer_control / 2];
 	uint8_t l0 = (layercontrol >> 0x06) & 0x03;
 	uint8_t l1 = (layercontrol >> 0x08) & 0x03;
 	uint8_t l2 = (layercontrol >> 0x0a) & 0x03;
 	uint8_t l3 = (layercontrol >> 0x0c) & 0x03;
+	livingarcade_raster_probe::hit(livingarcade_raster_probe::priority_clear);
 	screen.priority().fill(0, cliprect);
 
 	uint32_t primasks[8]{};

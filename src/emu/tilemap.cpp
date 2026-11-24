@@ -9,6 +9,7 @@
 ***************************************************************************/
 
 #include "emu.h"
+#include "livingarcade_raster_probe.h"
 #include "tilemap.h"
 
 #include "screen.h"
@@ -994,6 +995,8 @@ void tilemap_t::draw_common(screen_device &screen, _BitmapClass &dest, const rec
 	if (!m_enable)
 		return;
 
+	livingarcade_raster_probe::tile_entry(&dest, false, m_scrollrows > 1, m_scrollcols > 1);
+
 	auto profile = g_profiler.start(PROFILER_TILEMAP_DRAW);
 
 	// configure the blit parameters based on the input parameters
@@ -1219,6 +1222,7 @@ void tilemap_t::draw_roz_common(screen_device &screen, _BitmapClass &dest, const
 		return;
 	}
 
+	livingarcade_raster_probe::tile_entry(&dest, true, m_scrollrows > 1, m_scrollcols > 1);
 	auto profile = g_profiler.start(PROFILER_TILEMAP_DRAW_ROZ);
 
 	// configure the blit parameters

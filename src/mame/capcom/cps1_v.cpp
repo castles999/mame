@@ -461,6 +461,7 @@ The games seem to use them to mark platforms, kill zones and no-go areas.
 ***************************************************************************/
 
 #include "emu.h"
+#include "livingarcade_raster_probe.h"
 #include "cps1.h"
 
 #define VERBOSE 0
@@ -2611,6 +2612,7 @@ void cps_state::device_post_load()
 
 void cps_state::cps1_build_palette(const uint16_t* const palette_base)
 {
+	livingarcade_raster_probe::hit(livingarcade_raster_probe::palette);
 	uint16_t const *palette_ram = palette_base;
 	const uint16_t ctrl = m_cps_b_regs[m_game_config->palette_control/2];
 
@@ -2969,12 +2971,14 @@ void cps_state::cps1_render_high_layer(screen_device &screen, bitmap_ind16 &bitm
 
 void cps_state::render_layers(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
+	livingarcade_raster_probe::hit(livingarcade_raster_probe::cps1_layers);
 	// Draw layers (0 = sprites, 1-3 = tilemaps)
 	const uint16_t layercontrol = m_cps_b_regs[m_game_config->layer_control / 2];
 	const uint16_t l0 = (layercontrol >> 0x06) & 0x03;
 	const uint16_t l1 = (layercontrol >> 0x08) & 0x03;
 	const uint16_t l2 = (layercontrol >> 0x0a) & 0x03;
 	const uint16_t l3 = (layercontrol >> 0x0c) & 0x03;
+	livingarcade_raster_probe::hit(livingarcade_raster_probe::priority_clear);
 	screen.priority().fill(0, cliprect);
 
 	if (BIT(m_game_config->bootleg_kludge, 7))
@@ -3000,6 +3004,7 @@ void cps_state::render_layers(screen_device &screen, bitmap_ind16 &bitmap, const
 
 uint32_t cps_state::screen_update_cps1(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
+	livingarcade_raster_probe::update_scope la_probe(&bitmap, screen.frame_number(), cliprect.left(), cliprect.top(), cliprect.right(), cliprect.bottom());
 	const uint16_t videocontrol = m_cps_a_regs[CPS1_VIDEOCONTROL];
 
 	flip_screen_set(BIT(videocontrol, 15));
@@ -3039,14 +3044,17 @@ uint32_t cps_state::screen_update_cps1(screen_device &screen, bitmap_ind16 &bitm
 	// mtwins (explosion during attract), mercs (intermission).
 	// Depending on what type of monitor is connected, it can be glitchy on
 	// real hardware if 0xbff is not black.
+	livingarcade_raster_probe::hit(livingarcade_raster_probe::fill);
 	bitmap.fill(0xbff, cliprect);
 
 	if (m_region_stars)
 	{
+		if (m_stars_enabled[0] || m_stars_enabled[1]) livingarcade_raster_probe::hit(livingarcade_raster_probe::stars);
 		cps1_render_stars(screen, bitmap, cliprect);
 	}
 
 	render_layers(screen, bitmap, cliprect);
+	la_probe.finish(bitmap);
 
 	return 0;
 }
