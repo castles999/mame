@@ -43,6 +43,7 @@ Oscar:
 ***************************************************************************/
 
 #include "emu.h"
+#include "livingarcade_raster_command.h"
 #include "dec8.h"
 
 void dec8_state_base::bg_ram_w(offs_t offset, u8 data)
@@ -259,9 +260,14 @@ VIDEO_START_MEMBER(oscar_state,cobracom)
 
 u32 ghostb_state::screen_update_ghostb(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
+	livingarcade_raster_command::scope la_commands(bitmap, screen.priority(), screen.frame_number(), cliprect);
+	la_commands.seed_priority(screen.priority());
+	la_commands.undefined_color();
 	m_tilegen[0]->draw(screen,bitmap,cliprect,TILEMAP_DRAW_OPAQUE, 0);
 	m_spritegen_krn->draw_sprites(screen, bitmap, cliprect, m_buffered_spriteram16.get(), 0x400);
 	m_fix_tilemap->draw(screen, bitmap, cliprect, 0, 0);
+	la_commands.finish(bitmap, screen.priority());
+	la_commands.capture_palette(bitmap, *m_palette);
 	return 0;
 }
 
@@ -295,6 +301,9 @@ void oscar_state::oscar_tile_cb(tile_data &tileinfo, u32 &tile, u32 &colour, u32
 
 u32 oscar_state::screen_update_oscar(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
+	livingarcade_raster_command::scope la_commands(bitmap, screen.priority(), screen.frame_number(), cliprect);
+	la_commands.seed_priority(screen.priority());
+	la_commands.undefined_color();
 	bool flip = m_tilegen[0]->get_flip_state();
 	m_tilegen[0]->set_flip_screen(flip);
 	m_spritegen_mxc->set_flip_screen(flip);
@@ -304,6 +313,8 @@ u32 oscar_state::screen_update_oscar(screen_device &screen, bitmap_ind16 &bitmap
 	m_spritegen_mxc->draw_sprites(screen, bitmap, cliprect, m_buffered_spriteram16.get(), 0x800/2);
 	m_tilegen[0]->draw(screen,bitmap,cliprect,TILEMAP_DRAW_LAYER0, 0);
 	m_fix_tilemap->draw(screen, bitmap, cliprect, 0, 0);
+	la_commands.finish(bitmap, screen.priority());
+	la_commands.capture_palette(bitmap, *m_palette);
 	return 0;
 }
 
