@@ -173,7 +173,7 @@ struct scope {
     // Tag 7: ordered source gfx draw, no priority writes, 32-bit transparent mask.
     template<class Gfx,class Dest,class Rect>
     void plain_sprite(Gfx &gfx,const Dest &dest,const Rect &clip,
-                      u32 code,u32 color,int fx,int fy,int x,int y,u32 mask){
+                      u32 code,u32 color,int fx,int fy,int x,int y,u32 mask,unsigned tag=7,u32 trans=0){
         if(status)return;
         unsigned sw=gfx.width(),sh=gfx.height();
         if(&dest!=target||!gfx.elements()||!gfx.colors()||!sw||!sh||sw>64||sh>64||
@@ -183,9 +183,9 @@ struct scope {
         if(cl>=cr||ct>=cb)return;
         if(!room(38+u64(sw)*sh))return;
         const auto *data=gfx.get_data(code%gfx.elements());
-        put(7,1);rect(cl,ct,cr,cb);put(x,4);put(y,4);put(sw,2);put(sh,2);
+        put(tag,1);rect(cl,ct,cr,cb);put(x,4);put(y,4);put(sw,2);put(sh,2);
         put(fx?1:0,1);put(fy?1:0,1);put(gfx.colorbase()+gfx.granularity()*(color%gfx.colors()),2);
-        put(mask,4);put(0,1);
+        put(mask,4);put(trans,1);
         for(unsigned yy=0;yy<sh;++yy)for(unsigned xx=0;xx<sw;++xx){
             const auto p=data[yy*gfx.rowbytes()+xx];if(p>=32)status|=8;put(p,1);
         }
