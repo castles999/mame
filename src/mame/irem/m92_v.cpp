@@ -42,6 +42,7 @@
 *****************************************************************************/
 
 #include "emu.h"
+#include "livingarcade_raster_command.h"
 #include "m92.h"
 
 /*****************************************************************************/
@@ -573,13 +574,16 @@ void m92_state::m92_draw_tiles(screen_device &screen, bitmap_ind16 &bitmap, cons
 
 u32 m92_state::screen_update_m92(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
+	livingarcade_raster_command::scope la_commands(bitmap, screen.priority(), screen.frame_number(), cliprect);
 	/* Flipscreen appears hardwired to the dipswitch - strange */
 	if (m_dsw->read() & 0x100)
 		flip_screen_set(0);
 	else
 		flip_screen_set(1);
 
+	livingarcade_raster_command::clear(2, 0);
 	screen.priority().fill(0, cliprect);
+	livingarcade_raster_command::clear(1, 0);
 	bitmap.fill(0, cliprect);
 
 	m92_update_scroll_positions();
@@ -588,5 +592,7 @@ u32 m92_state::screen_update_m92(screen_device &screen, bitmap_ind16 &bitmap, co
 	if (~m_videocontrol & 0x80)
 		draw_sprites(screen, bitmap, cliprect);
 
+	la_commands.finish(bitmap, screen.priority());
+	la_commands.capture_palette(bitmap, *m_palette);
 	return 0;
 }
