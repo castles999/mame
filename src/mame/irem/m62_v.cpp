@@ -16,6 +16,7 @@ Tile/sprite priority system (for the Kung Fu Master M62 board):
 ***************************************************************************/
 
 #include "emu.h"
+#include "livingarcade_rgb_command.h"
 #include "video/resnet.h"
 #include "m62.h"
 
@@ -392,6 +393,7 @@ VIDEO_START_MEMBER(m62_state,kungfum)
 
 uint32_t m62_state::screen_update_kungfum(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect)
 {
+	livingarcade_rgb_command::scope la_rgb(bitmap, screen.frame_number(), cliprect);
 	int i;
 	for (i = 0; i < 6; i++)
 	{
@@ -404,6 +406,7 @@ uint32_t m62_state::screen_update_kungfum(screen_device &screen, bitmap_rgb32 &b
 	m_bg_tilemap->draw(screen, bitmap, cliprect, 0, 0);
 	draw_sprites(bitmap, cliprect, 0x1f, 0x00, 0x00);
 	m_bg_tilemap->draw(screen, bitmap, cliprect, 1, 0);
+	la_rgb.finish(bitmap);
 	return 0;
 }
 
@@ -436,6 +439,7 @@ void m62_state::video_start()
 
 uint32_t m62_state::screen_update_ldrun(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect)
 {
+	livingarcade_rgb_command::scope la_rgb(bitmap, screen.frame_number(), cliprect);
 	m_bg_tilemap->set_scrollx(0, m_m62_background_hscroll);
 	m_bg_tilemap->set_scrolly(0, m_m62_background_vscroll);
 
@@ -443,6 +447,7 @@ uint32_t m62_state::screen_update_ldrun(screen_device &screen, bitmap_rgb32 &bit
 	draw_sprites(bitmap, cliprect, 0x0f, 0x10, 0x00);
 	m_bg_tilemap->draw(screen, bitmap, cliprect, TILEMAP_DRAW_LAYER0, 0);
 	draw_sprites(bitmap, cliprect, 0x0f, 0x10, 0x10);
+	la_rgb.finish(bitmap);
 	return 0;
 }
 
@@ -537,6 +542,7 @@ VIDEO_START_MEMBER(m62_state,battroad)
 
 uint32_t m62_state::screen_update_battroad(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect)
 {
+	livingarcade_rgb_command::scope la_rgb(bitmap, screen.frame_number(), cliprect);
 	m_bg_tilemap->set_scrollx(0, m_m62_background_hscroll);
 	m_bg_tilemap->set_scrolly(0, m_m62_background_vscroll);
 	m_fg_tilemap->set_scrollx(0, 128);
@@ -548,6 +554,7 @@ uint32_t m62_state::screen_update_battroad(screen_device &screen, bitmap_rgb32 &
 	m_bg_tilemap->draw(screen, bitmap, cliprect, TILEMAP_DRAW_LAYER0, 0);
 	draw_sprites(bitmap, cliprect, 0x0f, 0x10, 0x10);
 	m_fg_tilemap->draw(screen, bitmap, cliprect, 0, 0);
+	la_rgb.finish(bitmap);
 	return 0;
 }
 
@@ -570,10 +577,12 @@ VIDEO_START_MEMBER(m62_state,ldrun4)
 
 uint32_t m62_state::screen_update_ldrun4(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect)
 {
+	livingarcade_rgb_command::scope la_rgb(bitmap, screen.frame_number(), cliprect);
 	m_bg_tilemap->set_scrollx(0, m_m62_background_hscroll - 2);
 
 	m_bg_tilemap->draw(screen, bitmap, cliprect, 0, 0);
 	draw_sprites(bitmap, cliprect, 0x1f, 0x00, 0x00);
+	la_rgb.finish(bitmap);
 	return 0;
 }
 
@@ -610,6 +619,7 @@ VIDEO_START_MEMBER(m62_state,lotlot)
 
 uint32_t m62_state::screen_update_lotlot(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect)
 {
+	livingarcade_rgb_command::scope la_rgb(bitmap, screen.frame_number(), cliprect);
 	m_bg_tilemap->set_scrollx(0, m_m62_background_hscroll - 64);
 	m_bg_tilemap->set_scrolly(0, m_m62_background_vscroll + 32);
 	m_fg_tilemap->set_scrollx(0, -64);
@@ -619,6 +629,7 @@ uint32_t m62_state::screen_update_lotlot(screen_device &screen, bitmap_rgb32 &bi
 	m_bg_tilemap->draw(screen, bitmap, cliprect, 0, 0);
 	m_fg_tilemap->draw(screen, bitmap, cliprect, 0, 0);
 	draw_sprites(bitmap, cliprect, 0x1f, 0x00, 0x00);
+	la_rgb.finish(bitmap);
 	return 0;
 }
 
@@ -674,6 +685,7 @@ VIDEO_START_MEMBER(m62_state,kidniki)
 
 uint32_t m62_state::screen_update_kidniki(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect)
 {
+	livingarcade_rgb_command::scope la_rgb(bitmap, screen.frame_number(), cliprect);
 	m_bg_tilemap->set_scrollx(0, m_m62_background_hscroll);
 	m_fg_tilemap->set_scrollx(0, -64);
 	m_fg_tilemap->set_scrolly(0, m_kidniki_text_vscroll + 128);
@@ -683,6 +695,7 @@ uint32_t m62_state::screen_update_kidniki(screen_device &screen, bitmap_rgb32 &b
 	draw_sprites(bitmap, cliprect, 0x1f, 0x00, 0x00);
 	m_bg_tilemap->draw(screen, bitmap, cliprect, TILEMAP_DRAW_LAYER0, 0);
 	m_fg_tilemap->draw(screen, bitmap, cliprect, 0, 0);
+	la_rgb.finish(bitmap);
 	return 0;
 }
 
@@ -724,6 +737,7 @@ VIDEO_START_MEMBER(m62_state,spelunkr)
 
 uint32_t m62_state::screen_update_spelunkr(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect)
 {
+	livingarcade_rgb_command::scope la_rgb(bitmap, screen.frame_number(), cliprect);
 	m_bg_tilemap->set_scrollx(0, m_m62_background_hscroll);
 	m_bg_tilemap->set_scrolly(0, m_m62_background_vscroll + 128);
 	m_fg_tilemap->set_scrollx(0, -64);
@@ -733,6 +747,7 @@ uint32_t m62_state::screen_update_spelunkr(screen_device &screen, bitmap_rgb32 &
 	m_bg_tilemap->draw(screen, bitmap, cliprect, 0, 0);
 	draw_sprites(bitmap, cliprect, 0x1f, 0x00, 0x00);
 	m_fg_tilemap->draw(screen, bitmap, cliprect, 0, 0);
+	la_rgb.finish(bitmap);
 	return 0;
 }
 
@@ -766,6 +781,7 @@ VIDEO_START_MEMBER(m62_state,spelunk2)
 
 uint32_t m62_state::screen_update_spelunk2(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect)
 {
+	livingarcade_rgb_command::scope la_rgb(bitmap, screen.frame_number(), cliprect);
 	m_bg_tilemap->set_scrollx(0, m_m62_background_hscroll - 1);
 	m_bg_tilemap->set_scrolly(0, m_m62_background_vscroll + 128);
 	m_fg_tilemap->set_scrollx(0, -65);
@@ -775,6 +791,7 @@ uint32_t m62_state::screen_update_spelunk2(screen_device &screen, bitmap_rgb32 &
 	m_bg_tilemap->draw(screen, bitmap, cliprect, 0, 0);
 	draw_sprites(bitmap, cliprect, 0x1f, 0x00, 0x00);
 	m_fg_tilemap->draw(screen, bitmap, cliprect, 0, 0);
+	la_rgb.finish(bitmap);
 	return 0;
 }
 
@@ -811,6 +828,7 @@ VIDEO_START_MEMBER(m62_state,youjyudn)
 
 uint32_t m62_state::screen_update_youjyudn(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect)
 {
+	livingarcade_rgb_command::scope la_rgb(bitmap, screen.frame_number(), cliprect);
 	m_bg_tilemap->set_scrollx(0, m_m62_background_hscroll);
 	m_fg_tilemap->set_scrollx(0, -64);
 	m_fg_tilemap->set_scrolly(0, 0);
@@ -820,6 +838,7 @@ uint32_t m62_state::screen_update_youjyudn(screen_device &screen, bitmap_rgb32 &
 	draw_sprites(bitmap, cliprect, 0x1f, 0x00, 0x00);
 	m_bg_tilemap->draw(screen, bitmap, cliprect, TILEMAP_DRAW_LAYER0, 0);
 	m_fg_tilemap->draw(screen, bitmap, cliprect, 0, 0);
+	la_rgb.finish(bitmap);
 	return 0;
 }
 
@@ -850,11 +869,13 @@ VIDEO_START_MEMBER(m62_state,horizon)
 
 uint32_t m62_state::screen_update_horizon(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect)
 {
+	livingarcade_rgb_command::scope la_rgb(bitmap, screen.frame_number(), cliprect);
 	for (int i = 0; i < 32; i++)
 		m_bg_tilemap->set_scrollx(i, m_scrollram[i << 1] | (m_scrollram[(i << 1) | 1] << 8));
 
 	m_bg_tilemap->draw(screen, bitmap, cliprect, TILEMAP_DRAW_LAYER1, 0);
 	draw_sprites(bitmap, cliprect, 0x1f, 0x00, 0x00);
 	m_bg_tilemap->draw(screen, bitmap, cliprect, TILEMAP_DRAW_LAYER0, 0);
+	la_rgb.finish(bitmap);
 	return 0;
 }
