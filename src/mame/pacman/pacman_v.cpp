@@ -21,6 +21,7 @@
 #include "emu.h"
 #include "pacman.h"
 #include "video/resnet.h"
+#include "livingarcade_pacman_trace.hpp"
 
 /***************************************************************************
 
@@ -303,6 +304,11 @@ void pacman_state::draw_sprites(screen_device &screen, bitmap_ind16 &bitmap, con
 
 		color = (spriteram[offs + 1] & 0x1f) | (m_colortablebank << 5) | (m_palettebank << 6);
 
+		if (livingarcade_capture::trace().enabled())
+		    livingarcade_capture::trace().sprite(
+		        (spriteram[offs] >> 2) | (m_spritebank << 6),color,fx,fy,
+		        sx,sy,
+		        m_palette->transpen_mask(*m_gfxdecode->gfx(1), color & 0x3f, 0));
 		m_gfxdecode->gfx(1)->transmask(bitmap,spriteclip,
 				(spriteram[offs] >> 2) | (m_spritebank << 6),
 				color,
@@ -311,6 +317,11 @@ void pacman_state::draw_sprites(screen_device &screen, bitmap_ind16 &bitmap, con
 				m_palette->transpen_mask(*m_gfxdecode->gfx(1), color & 0x3f, 0));
 
 		/* also plot the sprite with wraparound (tunnel in Crush Roller) */
+		if (livingarcade_capture::trace().enabled())
+		    livingarcade_capture::trace().sprite(
+		        (spriteram[offs] >> 2) | (m_spritebank << 6),color,fx,fy,
+		        sx - 256,sy,
+		        m_palette->transpen_mask(*m_gfxdecode->gfx(1), color & 0x3f, 0));
 		m_gfxdecode->gfx(1)->transmask(bitmap,spriteclip,
 				(spriteram[offs] >> 2) | (m_spritebank << 6),
 				color,
@@ -342,6 +353,11 @@ void pacman_state::draw_sprites(screen_device &screen, bitmap_ind16 &bitmap, con
 		fx = (spriteram[offs] & 1) ^ m_inv_spr;
 		fy = (spriteram[offs] & 2) ^ ((m_inv_spr) << 1);
 
+		if (livingarcade_capture::trace().enabled())
+		    livingarcade_capture::trace().sprite(
+		        (spriteram[offs] >> 2) | (m_spritebank << 6),color,fx,fy,
+		        sx,sy + m_xoffsethack,
+		        m_palette->transpen_mask(*m_gfxdecode->gfx(1), color & 0x3f, 0));
 		m_gfxdecode->gfx(1)->transmask(bitmap,spriteclip,
 				(spriteram[offs] >> 2) | (m_spritebank << 6),
 				color,
@@ -350,6 +366,11 @@ void pacman_state::draw_sprites(screen_device &screen, bitmap_ind16 &bitmap, con
 				m_palette->transpen_mask(*m_gfxdecode->gfx(1), color & 0x3f, 0));
 
 		/* also plot the sprite with wraparound (tunnel in Crush Roller) */
+		if (livingarcade_capture::trace().enabled())
+		    livingarcade_capture::trace().sprite(
+		        (spriteram[offs] >> 2) | (m_spritebank << 6),color,fx,fy,
+		        sx - 256,sy + m_xoffsethack,
+		        m_palette->transpen_mask(*m_gfxdecode->gfx(1), color & 0x3f, 0));
 		m_gfxdecode->gfx(1)->transmask(bitmap,spriteclip,
 				(spriteram[offs] >> 2) | (m_spritebank << 6),
 				color,
@@ -361,6 +382,18 @@ void pacman_state::draw_sprites(screen_device &screen, bitmap_ind16 &bitmap, con
 
 uint32_t pacman_state::screen_update_pacman(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
+    // BEGIN LIVINGARCADE_PACMAN_CAPTURE (research-only / opt-in)
+    livingarcade_capture::trace().dictionary(0,m_gfxdecode->gfx(0));
+    livingarcade_capture::trace().dictionary(1,m_gfxdecode->gfx(1));
+    livingarcade_capture::trace().palette(*m_palette);
+    livingarcade_capture::trace().begin(
+        screen.frame_number(),cliprect.min_x,cliprect.min_y,cliprect.max_x,cliprect.max_y,
+        m_charbank,m_spritebank,m_palettebank,m_colortablebank,m_flipscreen,m_bgpriority,
+        &m_videoram[0],m_colorram ? &m_colorram[0] : nullptr,
+        m_spriteram ? &m_spriteram[0] : nullptr,m_spriteram ? unsigned(m_spriteram.bytes()) : 0,
+        m_spriteram2 ? &m_spriteram2[0] : nullptr,m_spriteram2 ? unsigned(m_spriteram2.bytes()) : 0);
+    // END LIVINGARCADE_PACMAN_CAPTURE
+
 	if (m_bgpriority != 0)
 		bitmap.fill(0, cliprect);
 	else
@@ -371,6 +404,12 @@ uint32_t pacman_state::screen_update_pacman(screen_device &screen, bitmap_ind16 
 
 	if (m_bgpriority != 0)
 		m_bg_tilemap->draw(screen, bitmap, cliprect, 0, 0);
+
+	
+    // BEGIN LIVINGARCADE_PACMAN_CAPTURE
+    livingarcade_capture::trace().end(cliprect.min_x,cliprect.min_y,cliprect.max_x,cliprect.max_y,
+        [&](int y,int x) { return bitmap.pix(y,x); });
+    // END LIVINGARCADE_PACMAN_CAPTURE
 
 	return 0;
 }
