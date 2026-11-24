@@ -30,6 +30,7 @@ other 2 bits (output & 0x0c) unknown
 ***************************************************************************/
 
 #include "emu.h"
+#include "livingarcade_raster_command.h"
 #include "1943.h"
 
 /***************************************************************************
@@ -213,6 +214,16 @@ void _1943_state::_1943_drawgfx(bitmap_ind16 &dest_bmp, const rectangle &clip, g
 		u32 code, u32 color, bool flipx, bool flipy, int offsx, int offsy, u8 transparent_color)
 {
 	bitmap_ind8 &priority_bitmap = m_screen->priority();
+	// Record source gfx and PROM control before the custom priority mixer runs.
+	if (auto *la = livingarcade_raster_command::active)
+	{
+		u32 mask = 0;
+		for (unsigned pen = 0; pen < 16; ++pen)
+			if (m_proms[0x900 + pen + (color << 4)] & 0x08)
+				mask |= u32(1) << pen;
+		la->plain_sprite(*gfx, dest_bmp, clip, code, color, flipx, flipy, offsx, offsy, mask, 10, transparent_color);
+	}
+
 
 	const u16 pal = gfx->colorbase() + gfx->granularity() * (color % gfx->colors());
 	const u8 *source_base = gfx->get_data(code % gfx->elements());
@@ -309,16 +320,24 @@ void _1943_state::draw_sprites(bitmap_ind16 &bitmap, const rectangle &cliprect)
 
 u32 _1943_state::screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
+	livingarcade_raster_command::scope la_commands(bitmap, screen.priority(), screen.frame_number(), cliprect);
 	m_bg2_tilemap->set_scrollx(0, m_bgscrollx[0] + 256 * m_bgscrollx[1]);
 	m_bg_tilemap->set_scrollx(0, m_scrollx[0] + 256 * m_scrollx[1]);
 	m_bg_tilemap->set_scrolly(0, m_scrolly[0]);
 
+	livingarcade_raster_command::clear(2, 0);
 	screen.priority().fill(0, cliprect);
 
 	if (m_bg2_on)
+	{
+		la_commands.undefined_color();
 		m_bg2_tilemap->draw(screen, bitmap, cliprect, 0, 1);
+	}
 	else
+	{
+		livingarcade_raster_command::clear(1, m_palette->black_pen());
 		bitmap.fill(m_palette->black_pen(), cliprect);
+	}
 
 	if (m_bg1_on)
 		m_bg_tilemap->draw(screen, bitmap, cliprect, 0, 2);
@@ -329,5 +348,7 @@ u32 _1943_state::screen_update(screen_device &screen, bitmap_ind16 &bitmap, cons
 	if (m_char_on)
 		m_fg_tilemap->draw(screen, bitmap, cliprect, 0, 0);
 
+	la_commands.finish(bitmap, screen.priority());
+	la_commands.capture_palette(bitmap, *m_palette);
 	return 0;
 }
