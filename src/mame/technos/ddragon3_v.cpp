@@ -7,6 +7,7 @@
 ***************************************************************************/
 
 #include "emu.h"
+#include "livingarcade_raster_command.h"
 #include "ddragon3.h"
 
 #include <bit>
@@ -226,6 +227,9 @@ void ddragon3_state::draw_sprites(bitmap_ind16 &bitmap, const rectangle &cliprec
 
 uint32_t ddragon3_state::screen_update_ddragon3(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
+	livingarcade_raster_command::scope la_commands(bitmap, screen.priority(), screen.frame_number(), cliprect);
+	la_commands.seed_priority(screen.priority());
+	la_commands.undefined_color();
 	m_bg_tilemap->set_scrollx(0, m_bg_scrollx);
 	m_bg_tilemap->set_scrolly(0, m_bg_scrolly);
 	m_fg_tilemap->set_scrollx(0, m_fg_scrollx);
@@ -249,11 +253,16 @@ uint32_t ddragon3_state::screen_update_ddragon3(screen_device &screen, bitmap_in
 		draw_sprites(bitmap, cliprect);
 		m_fg_tilemap->draw(screen, bitmap, cliprect, 0, 0);
 	}
+	la_commands.finish(bitmap, screen.priority());
+	la_commands.capture_palette(bitmap, *m_palette);
 	return 0;
 }
 
 uint32_t ddragon3_state::screen_update_ctribe(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
+	livingarcade_raster_command::scope la_commands(bitmap, screen.priority(), screen.frame_number(), cliprect);
+	la_commands.seed_priority(screen.priority());
+	la_commands.undefined_color();
 	m_bg_tilemap->set_scrollx(0, m_bg_scrollx);
 	m_bg_tilemap->set_scrolly(0, m_bg_scrolly);
 	m_fg_tilemap->set_scrollx(0, m_fg_scrollx);
@@ -271,12 +280,17 @@ uint32_t ddragon3_state::screen_update_ctribe(screen_device &screen, bitmap_ind1
 		m_fg_tilemap->draw(screen, bitmap, cliprect, 0, 0);
 		draw_sprites(bitmap, cliprect);
 	}
+	la_commands.finish(bitmap, screen.priority());
+	la_commands.capture_palette(bitmap, *m_palette);
 	return 0;
 }
 
 
 uint32_t wwfwfest_state::screen_update_wwfwfest(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
+	livingarcade_raster_command::scope la_commands(bitmap, screen.priority(), screen.frame_number(), cliprect);
+	la_commands.seed_priority(screen.priority());
+	la_commands.undefined_color();
 	if (m_pri == 0x78)
 	{
 		m_fg_tilemap->set_scrolly(0, m_fg_scrolly);
@@ -316,5 +330,7 @@ uint32_t wwfwfest_state::screen_update_wwfwfest(screen_device &screen, bitmap_in
 
 	m_fg0_tilemap->draw(screen, bitmap, cliprect, 0, 0);
 
+	la_commands.finish(bitmap, screen.priority());
+	la_commands.capture_palette(bitmap, *m_palette);
 	return 0;
 }
