@@ -14,6 +14,7 @@
 ***************************************************************************/
 
 #include "emu.h"
+#include "livingarcade_raster_command.h"
 #include "galaga.h"
 #include "bosco.h"
 
@@ -245,6 +246,8 @@ void bosco_state::draw_bullets(bitmap_ind16 &bitmap, const rectangle &cliprect, 
 
 uint32_t bosco_state::screen_update_bosco(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
+	livingarcade_raster_command::scope la_commands(bitmap, screen.priority(), screen.frame_number(), cliprect);
+	la_commands.seed_priority(screen.priority());
 	/* the radar tilemap is just 8x32. We rely on the tilemap code to repeat it across
 	   the screen, and clip it to only the position where it is supposed to be shown */
 	rectangle fg_clip = cliprect;
@@ -264,6 +267,7 @@ uint32_t bosco_state::screen_update_bosco(screen_device &screen, bitmap_ind16 &b
 	bg_clip &= cliprect;
 	fg_clip &= cliprect;
 
+	livingarcade_raster_command::clear(1, m_palette->black_pen());
 	bitmap.fill(m_palette->black_pen(), cliprect);
 	m_starfield->draw_starfield(bitmap, bg_clip, flip);
 
@@ -282,7 +286,9 @@ uint32_t bosco_state::screen_update_bosco(screen_device &screen, bitmap_ind16 &b
 		{
 			for (int x = 63; x >= 0; x--)
 			{
+				livingarcade_raster_command::move_pixel(bitmap, x, y, x + 3, y);
 				bitmap.pix(y, x + 3) = bitmap.pix(y, x);
+				livingarcade_raster_command::point(bitmap, x, y, m_palette->black_pen());
 				bitmap.pix(y, x) = m_palette->black_pen();
 			}
 		}
@@ -290,12 +296,16 @@ uint32_t bosco_state::screen_update_bosco(screen_device &screen, bitmap_ind16 &b
 		{
 			for (int x = 224; x < 288; x++)
 			{
+				livingarcade_raster_command::move_pixel(bitmap, x, y, x - 3, y);
 				bitmap.pix(y, x - 3) = bitmap.pix(y, x);
+				livingarcade_raster_command::point(bitmap, x, y, m_palette->black_pen());
 				bitmap.pix(y, x) = m_palette->black_pen();
 			}
 		}
 	}
 
+	la_commands.finish(bitmap, screen.priority());
+	la_commands.capture_palette(bitmap, *m_palette);
 	return 0;
 }
 
