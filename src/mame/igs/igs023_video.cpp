@@ -16,6 +16,7 @@ TODO:
 */
 
 #include "emu.h"
+#include "livingarcade_raster_command.h"
 #include "igs023_video.h"
 
 #include "screen.h"
@@ -263,6 +264,8 @@ inline void igs023_video_device::pgm_draw_pix(int xdrawpos, int pri, u16 *dest, 
 {
 	if ((xdrawpos >= cliprect.min_x) && (xdrawpos <= cliprect.max_x))
 	{
+		if (auto *la = livingarcade_raster_command::active)
+			la->pgm_pixel(dest, destpri, xdrawpos, srcdat);
 		if (!(destpri[xdrawpos] & 1))
 		{
 			if ((!pri) || (!(destpri[xdrawpos] & 2)))
@@ -410,7 +413,11 @@ void igs023_video_device::draw_sprite_new_zoomed(int wide, int high, int xpos, i
 			{
 				u16 *dest = &bitmap.pix(ydrawpos);
 				u8 *destpri = &priority_bitmap.pix(ydrawpos);
+				if (auto *la = livingarcade_raster_command::active)
+					la->pgm_begin(bitmap, priority_bitmap, ydrawpos, pri);
 				draw_sprite_line(wide, dest, destpri, cliprect, xzoom, xgrow, flip, xpos, pri, realxsize, palt, true);
+				if (auto *la = livingarcade_raster_command::active)
+					la->pgm_end();
 			}
 			else
 			{
@@ -433,7 +440,11 @@ void igs023_video_device::draw_sprite_new_zoomed(int wide, int high, int xpos, i
 			{
 				u16 *dest = &bitmap.pix(ydrawpos);
 				u8 *destpri = &priority_bitmap.pix(ydrawpos);
+				if (auto *la = livingarcade_raster_command::active)
+					la->pgm_begin(bitmap, priority_bitmap, ydrawpos, pri);
 				draw_sprite_line(wide, dest, destpri, cliprect, xzoom, xgrow, flip, xpos, pri, realxsize, palt, true);
+				if (auto *la = livingarcade_raster_command::active)
+					la->pgm_end();
 			}
 			else
 			{
@@ -470,7 +481,11 @@ void igs023_video_device::draw_sprite_new_zoomed(int wide, int high, int xpos, i
 			{
 				u16 *dest = &bitmap.pix(ydrawpos);
 				u8 *destpri = &priority_bitmap.pix(ydrawpos);
+				if (auto *la = livingarcade_raster_command::active)
+					la->pgm_begin(bitmap, priority_bitmap, ydrawpos, pri);
 				draw_sprite_line(wide, dest, destpri, cliprect, xzoom, xgrow, flip, xpos, pri, realxsize, palt, true);
+				if (auto *la = livingarcade_raster_command::active)
+					la->pgm_end();
 			}
 			else
 			{
@@ -558,7 +573,11 @@ void igs023_video_device::draw_sprite_new_basic(int wide, int high, int xpos, in
 		{
 			u16 *dest = &bitmap.pix(ydrawpos);
 			u8 *destpri = &priority_bitmap.pix(ydrawpos);
+			if (auto *la = livingarcade_raster_command::active)
+				la->pgm_begin(bitmap, priority_bitmap, ydrawpos, pri);
 			draw_sprite_line_basic(wide, dest, destpri, cliprect, flip, xpos, pri, realxsize, palt, true);
+			if (auto *la = livingarcade_raster_command::active)
+				la->pgm_end();
 		}
 		else
 		{
@@ -769,8 +788,11 @@ void igs023_video_device::device_reset()
 
 u32 igs023_video_device::screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
+	livingarcade_raster_command::scope la_commands(bitmap, screen.priority(), screen.frame_number(), cliprect);
+	livingarcade_raster_command::clear(1, 0x3ff);
 	bitmap.fill(0x3ff, cliprect); // ddp2 igs logo needs 0x3ff
 
+	livingarcade_raster_command::clear(2, 0);
 	screen.priority().fill(0, cliprect);
 
 	if (BIT(~m_ctrl, 12))
@@ -788,6 +810,8 @@ u32 igs023_video_device::screen_update(screen_device &screen, bitmap_ind16 &bitm
 	if (BIT(~m_ctrl, 11))
 		m_tx_tilemap->draw(screen, bitmap, cliprect, 0, 0);
 
+	la_commands.finish(bitmap, screen.priority());
+	la_commands.capture_palette(bitmap, gfx(0)->palette());
 	return 0;
 }
 
