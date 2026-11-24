@@ -40,6 +40,40 @@ struct writer {
 };
 inline writer &output(){static writer w;return w;}
 inline writer &palette_output(){static writer w("LIVINGARCADE_RASTER_PALETTE","LARP0001");return w;}
+inline writer &present_output(){static writer w("LIVINGARCADE_RASTER_PRESENT","LARF0001");return w;}
+// Independent witness of the indexed texture source just before set_bitmap.
+// Not the post-OSD, scaled, CRT-filtered, brightness-modulated display image.
+template<class Bitmap,class Palette,class Rect>
+inline void present_witness(const Bitmap &dest,const Palette &palette,u64 frame,const Rect &clip){
+    auto &p=present_output();
+    if(!p.f||p.failed||p.capped)return;
+    if(p.count>=max_updates){p.capped=true;return;}
+    const int w=dest.width(),h=dest.height(),l=clip.left(),t=clip.top(),r=clip.right()+1,b=clip.bottom()+1;
+    u32 status=0,n=palette.entries();
+    if(!dest.valid()||w<=0||h<=0||w>1024||h>1024||l<0||t<0||r>w||b>h||l>=r||t>=b)status|=1;
+    if(!palette.palette()||!n||n>65536||palette.shadows_enabled()||palette.highlights_enabled())status|=32;
+    u64 indexed=offset,rgb=offset;
+    std::vector<u32> colors;
+    if(!status){
+        colors.reserve(n);
+        for(u32 i=0;i<n;++i)colors.push_back(u32(palette.palette()->entry_adjusted_color(i))&0xffffff);
+        for(int y=t;y<b&&!status;++y)for(int x=l;x<r;++x){
+            const auto pen=u32(dest.pix(y,x));
+            if(pen>=n){status|=32;break;}
+            mix(indexed,pen);mix(indexed,pen>>8);
+            const u32 c=colors[pen];mix(rgb,c>>16);mix(rgb,c>>8);mix(rgb,c);
+        }
+    }
+    if(status)colors.clear();
+    if(p.bytes+64+4*u64(colors.size())+12>max_file){p.capped=true;return;}
+    p.write("FRM1",4);p.integer(frame,8);
+    for(int v:{w,h,l,t,r,b})p.integer(u32(v),4);
+    p.integer(p.count,4);p.integer(status,4);p.integer(colors.size(),4);
+    p.integer(indexed,8);p.integer(rgb,8);
+    for(u32 c:colors)p.integer(c,4);
+    ++p.count;if(std::fflush(p.f)!=0)p.failed=true;
+}
+
 struct scope;
 inline thread_local scope *active=nullptr;
 struct scope {
