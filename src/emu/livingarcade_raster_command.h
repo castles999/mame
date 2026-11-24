@@ -44,13 +44,14 @@ inline writer &present_output(){static writer w("LIVINGARCADE_RASTER_PRESENT","L
 // MAME appends reserved black and white entries after the ordinary colors.
 // entry_adjusted_color() returns black for either out-of-range special index;
 // the renderer instead reads entry_list_adjusted(), which includes both.
-// Keep shadow/highlight groups fail-closed until their replay is qualified.
+// Include adjusted shadow/highlight groups; individual blend operations
+// must still be implemented and verified independently.
 template<class Palette>
 inline bool snapshot_colors(const Palette &palette,std::vector<u32> &colors){
-    const u32 entries=palette.entries();
-    if(!palette.palette()||!entries||entries>65536||palette.shadows_enabled()||palette.highlights_enabled())
-        return false;
-    const u32 n=std::min<u32>(65536,entries+2);
+    if(!palette.palette())return false;
+    const u64 entries=u64(palette.palette()->num_colors())*palette.palette()->num_groups();
+    if(!entries||entries>65536)return false;
+    const u32 n=u32(std::min<u64>(65536,entries+2));
     const auto *adjusted=palette.palette()->entry_list_adjusted();
     colors.reserve(n);
     for(u32 i=0;i<n;++i)colors.push_back(u32(adjusted[i])&0xffffff);
@@ -299,6 +300,18 @@ struct scope {
             if(p>15)status|=8;
             put(p,1);
         }
+    }
+    // Tag 13: Sega System 16B mixer input row from the independent sprite
+    // surface. Reapply tile priority and shadow rules in the decoder.
+    template<class Dest,class Pri>
+    void sega_sprite_row(const Dest &dest,const Pri &pri,int x,int y,int end,
+                         const u16 *source,u32 palette_base,u32 shadow_offset){
+        if(status)return;
+        if(&dest!=target||&pri!=priority||!source||!bounds(x,y,end,y+1)||
+           palette_base>65535||shadow_offset>65535){status|=4;return;}
+        if(!room(21+2*u64(end-x)))return;
+        put(13,1);rect(x,y,end,y+1);put(palette_base,2);put(shadow_offset,2);
+        for(int xx=x;xx<end;++xx)put(source[xx],2);
     }
     // Optional companion stream, correlated one-to-one with committed UPD1 records.
     // This samples the effective adjusted palette at callback completion, NOT final
