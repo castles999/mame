@@ -7,6 +7,7 @@
 ***************************************************************************/
 
 #include "emu.h"
+#include "livingarcade_raster_command.h"
 #include "mcr.h"
 #include "screen.h"
 
@@ -268,6 +269,9 @@ void mcr_state::render_sprites_91399(screen_device &screen, bitmap_ind16 &bitmap
 		sx &= 0x1ff;
 		sy &= 0x1ff;
 
+		if (auto *la = livingarcade_raster_command::active)
+			la->mcr_sprite(*gfx, bitmap, screen.priority(), code, sx, sy, hflip, vflip, 11, 0, 0);
+
 		/* loop over lines in the sprite */
 		for (int y = 0; y < 32; y++, sy = (sy + 1) & 0x1ff)
 			if (sy >= cliprect.min_y && sy <= cliprect.max_y)
@@ -335,6 +339,9 @@ void mcr_state::render_sprites_91464(screen_device &screen, bitmap_ind16 &bitmap
 		sx &= 0x1ff;
 		sy &= 0x1ff;
 
+		if (auto *la = livingarcade_raster_command::active)
+			la->mcr_sprite(*gfx, bitmap, screen.priority(), code, sx, sy, hflip, vflip, 12, color, primask);
+
 		/* loop over lines in the sprite */
 		for (int y = 0; y < 32; y++, sy = (sy + 1) & 0x1ff)
 			if (sy >= 2 && sy >= cliprect.min_y && sy <= cliprect.max_y)
@@ -379,10 +386,13 @@ void mcr_state::render_sprites_91464(screen_device &screen, bitmap_ind16 &bitmap
 
 uint32_t mcr_state::screen_update_mcr(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
+	livingarcade_raster_command::scope la_commands(bitmap, screen.priority(), screen.frame_number(), cliprect);
+	la_commands.undefined_color();
 	/* update the flip state */
 	m_bg_tilemap->set_flip(m_mcr_cocktail_flip ? (TILEMAP_FLIPX | TILEMAP_FLIPY) : 0);
 
 	/* draw the background */
+	livingarcade_raster_command::clear(2, 0);
 	screen.priority().fill(0, cliprect);
 	m_bg_tilemap->draw(screen, bitmap, cliprect, 0, 0x00);
 	m_bg_tilemap->draw(screen, bitmap, cliprect, 1, 0x10);
@@ -407,5 +417,7 @@ uint32_t mcr_state::screen_update_mcr(screen_device &screen, bitmap_ind16 &bitma
 			render_sprites_91464(screen, bitmap, cliprect, 0x00, 0x30, 0x00);
 		break;
 	}
+	la_commands.finish(bitmap, screen.priority());
+	la_commands.capture_palette(bitmap, *m_palette);
 	return 0;
 }
