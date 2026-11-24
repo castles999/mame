@@ -195,6 +195,21 @@ struct scope {
         put(pcode,4);put(opaque?0:mask,1);put(opaque?0:value,1);
         for(int y=sy;y<ey;++y)for(int x=sx;x<ex;++x){put(pix.pix(y,x),2);put(flags.pix(y,x),1);}
     }
+    // Custom tile chips may gather noncontiguous source samples after row and
+    // column scrolling. Lower one row into the existing tile-run wire format.
+    // The caller supplies one source pen and one resolved source flag per x.
+    template<class Dest,class Pri>
+    bool sampled_tile_row(const Dest &dest,const Pri &pri,int x,int y,int end,
+                          unsigned priority_code){
+        if(status)return false;
+        if(&dest!=target||&pri!=priority||!bounds(x,y,end,y+1)){
+            status|=4;return false;
+        }
+        if(!room(24+3*u64(end-x)))return false;
+        put(3,1);put(0,1);rect(x,y,end,y+1);
+        put(priority_code,4);put(1,1);put(1,1);
+        return true;
+    }
     template<class Gfx,class Dest,class Pri,class Rect>
     void sprite(Gfx &gfx,const Dest &dest,const Pri &pri,const Rect &clip,
                 u32 code,u32 color,int fx,int fy,int x,int y,u32 pmask,u32 trans){
