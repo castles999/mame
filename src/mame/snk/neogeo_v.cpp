@@ -8,6 +8,7 @@
 ****************************************************************************/
 
 #include "emu.h"
+#include "livingarcade_scanline_command.h"
 #include "neogeo.h"
 #include "video/resnet.h"
 
@@ -156,12 +157,14 @@ void neogeo_base_state::video_reset()
 
 uint32_t neogeo_base_state::screen_update(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect)
 {
+	livingarcade_scanline_command::scanline_scope la_line(bitmap, screen.frame_number(), cliprect, *m_bg_pen);
 	// fill with background color first
 	bitmap.fill(*m_bg_pen, cliprect);
 
 	m_sprgen->draw_sprites(bitmap, cliprect.min_y);
 
 	m_sprgen->draw_fixed_layer(bitmap, cliprect.min_y);
+	la_line.finish(bitmap);
 
 	return 0;
 }
