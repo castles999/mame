@@ -197,6 +197,7 @@ VBlank duration: 1/VSYNC * (16/256) = 1017.6 us
 ***************************************************************************/
 
 #include "emu.h"
+#include "livingarcade_rgb_command.h"
 #include "gottlieb_a.h"
 
 #include "cpu/i86/i86.h"
@@ -655,11 +656,12 @@ void gottlieb_state::draw_sprites(bitmap_rgb32 &bitmap, const rectangle &cliprec
 
 u32 gottlieb_state::screen_update(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect)
 {
+	livingarcade_rgb_command::scope la_rgb(bitmap, screen.frame_number(), cliprect);
 	// if the background has lower priority, render it first, else clear the screen
 	if (!m_background_priority)
 		m_bg_tilemap->draw(screen, bitmap, cliprect, TILEMAP_DRAW_OPAQUE, 0);
 	else
-		bitmap.fill(m_palette->pen(0), cliprect);
+		livingarcade_rgb_command::fill(bitmap, m_palette->pen(0), cliprect);
 
 	// draw the sprites
 	draw_sprites(bitmap, cliprect);
@@ -668,6 +670,7 @@ u32 gottlieb_state::screen_update(screen_device &screen, bitmap_rgb32 &bitmap, c
 	if (m_background_priority)
 		m_bg_tilemap->draw(screen, bitmap, cliprect, 0, 0);
 
+	la_rgb.finish(bitmap);
 	return 0;
 }
 
