@@ -141,6 +141,7 @@ the wide tilemap mode)
 */
 
 #include "emu.h"
+#include "livingarcade_raster_command.h"
 #include "tc0100scn.h"
 #include "screen.h"
 
@@ -652,12 +653,19 @@ void tc0100scn_base_device::tilemap_draw_fg( screen_device &screen, bitmap_ind16
 		if (m_ctrl[0x7] & 1) // Flipscreen
 			src_x = (256 - 64 - src_x) & width_mask;
 
+		auto *la = livingarcade_raster_command::active;
+		const bool la_row = la && la->sampled_tile_row(bitmap, screen.priority(), cliprect.min_x, y, cliprect.max_x+1, (u32(pmask)<<8)|priority);
 		// Col offsets are 'tilemap' space 0-511, and apply to blocks of 8 pixels at once
 		for (int x = 0; x < cliprect.width(); x++)
 		{
 			column_offset = m_colscroll_ram[(src_x & 0x3ff) / 8];
 			int p = src_bitmap.pix((src_y - column_offset) & height_mask, src_x);
 
+			if (la_row)
+			{
+				la->put(p, 2);
+				la->put(((p & 0xf)!=0 || (flags & TILEMAP_DRAW_OPAQUE)) ? 1 : 0, 1);
+			}
 			if ((p & 0xf)!= 0 || (flags & TILEMAP_DRAW_OPAQUE))
 			{
 				bitmap.pix(y, x + cliprect.min_x) = p;
