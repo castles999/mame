@@ -1110,8 +1110,12 @@ void ppu2c0x_device::update_visible_scanline()
 {
 	// Capture the inputs of the latest generation of this row, not its
 	// final bitmap. Repeated partial updates replace this generation.
-	const int la_slot = livingarcade_raster_command::ppu_screen_slot(screen().tag(), screen_device_enumerator(machine().root_device()).count());
-	auto &la_out = la_slot == 1 ? livingarcade_rgb_command::secondary_rgb_output() : livingarcade_rgb_command::rgb_output();
+	auto &la_primary = livingarcade_rgb_command::rgb_output();
+	auto &la_secondary = livingarcade_rgb_command::secondary_rgb_output();
+	const bool la_enabled = (la_primary.f && !la_primary.failed && !la_primary.capped) ||
+		(la_secondary.f && !la_secondary.failed && !la_secondary.capped);
+	const int la_slot = la_enabled ? livingarcade_raster_command::ppu_screen_slot(screen().tag(), screen_device_enumerator(machine().root_device()).count()) : -1;
+	auto &la_out = la_slot == 1 ? la_secondary : la_primary;
 	m_la_record_line = la_slot >= 0 && la_out.f && !la_out.failed && !la_out.capped &&
 		m_scanline >= 0 && m_scanline < VISIBLE_SCREEN_HEIGHT;
 	if (m_la_record_line)
