@@ -4,6 +4,7 @@
 // programmed to Altera Cyclone EP1C12 FPGA
 
 #include "emu.h"
+#include "livingarcade_cv1k_trace.h"
 #include "cv1k_v.h"
 
 #include "screen.h"
@@ -178,6 +179,7 @@ inline u16 cv1k_blitter_device::COPY_NEXT_WORD(address_space &space, offs_t &add
 //  u16 data = space.read_word(addr); // going through the memory system is 'more correct' but noticeably slower
 	const u16 data = m_ram16[get_ram_addr(addr, m_main_rammask)];
 	m_ram16_copy[get_ram_addr(addr, m_main_rammask)] = data;
+	livingarcade_cv1k_trace::word(data);
 
 	addr += 2;
 
@@ -717,6 +719,7 @@ void cv1k_blitter_device::gfx_create_shadow_copy(address_space &space)
 
 	m_clip.set(m_gfx_clip_x_shadowcopy - CV1K_CLIP_MARGIN, m_gfx_clip_x_shadowcopy + 320 - 1 + CV1K_CLIP_MARGIN,
 		m_gfx_clip_y_shadowcopy - CV1K_CLIP_MARGIN, m_gfx_clip_y_shadowcopy + 240 - 1 + CV1K_CLIP_MARGIN);
+	livingarcade_cv1k_trace::list la_list(m_clip);
 	while (1)
 	{
 		// request commands from main CPU RAM
@@ -898,6 +901,7 @@ u32 cv1k_blitter_device::screen_update(screen_device &screen, bitmap_rgb32 &bitm
 	{
 		const int scroll_x = -m_gfx_scroll_x;
 		const int scroll_y = -m_gfx_scroll_y;
+		livingarcade_cv1k_trace::view(screen.frame_number(), cliprect, scroll_x, scroll_y);
 
 		copyscrollbitmap(bitmap, m_bitmaps, 1, &scroll_x, 1, &scroll_y, cliprect);
 	}
