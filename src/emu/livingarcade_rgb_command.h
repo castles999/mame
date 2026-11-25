@@ -127,11 +127,11 @@ struct scope {
         put(7,1);rect(start,y,end,y+1);put(zero,4);put(background,4);
         for(unsigned i=0;i<4;++i){if(blend[i]>8)status|=8;put(blend[i],1);}
     }
-    bool mixer_layer(int y,int start,int end,unsigned pri,unsigned mode){
+    bool mixer_layer(int y,int start,int end,unsigned pri,unsigned mode,unsigned layer){
         if(status)return false;
-        if(!bounds(start,y,end,y+1)||pri>255||mode>3){status|=8;return false;}
-        if(!room(19+6*u64(end-start)))return false;
-        put(8,1);rect(start,y,end,y+1);put(pri,1);put(mode,1);
+        if(!bounds(start,y,end,y+1)||pri>255||mode>3||layer>8){status|=8;return false;}
+        if(!room(20+6*u64(end-start)))return false;
+        put(8,1);rect(start,y,end,y+1);put(pri,1);put(mode,1);put(layer,1);
         return true;
     }
     void mixer_sample(bool selected,unsigned select,u32 color){
