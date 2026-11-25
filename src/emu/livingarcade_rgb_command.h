@@ -223,6 +223,26 @@ struct scope {
             }else for(int x=0;x<end-start;++x)put(src[x0+x*step],2);
         }
     }
+    // Tags 13/14: packed 4bpp Williams source VRAM, not RGB framebuffer.
+    // A transparent-zero overlay can follow an independent tile background.
+    bool vram4_initialized=false;
+    template<class Dest,class Colors>
+    void vram4_begin(const Dest &dest,const Colors &colors,bool transparent){
+        if(status)return;
+        if(&dest!=target||vram4_initialized){status|=8;return;}
+        if(!room(66))return;
+        vram4_initialized=true;put(13,1);put(transparent?1:0,1);
+        for(unsigned i=0;i<16;++i)put(transparent&&i==0?0:u32(colors[i]),4);
+    }
+    template<class Dest,class Source>
+    void vram4_row(const Dest &dest,int y,const Source *source){
+        if(status)return;
+        if(&dest!=target||!vram4_initialized||!source||!bounds(l,y,r,y+1)||r>512){status|=8;return;}
+        const int first=l/2,last=(r+1)/2;
+        if(!room(17+last-first))return;
+        put(14,1);rect(l,y,r,y+1);
+        for(int x=first;x<last;++x)put(source[x*256],1);
+    }
     template<class Bitmap> void finish(const Bitmap &dest){
         if(!out||finished)return;
         finished=true;u64 hash=offset;
