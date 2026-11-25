@@ -483,6 +483,62 @@ struct scope {
         put(25,1);rect(a,y,d,y+1);put(mode,1);put(base,2);put(flags,1);
         for(int x=a;x<d;++x)put(src[reverse?d-1-x:x-a],2);
     }
+    // Tag 26: ordered rectangular clear after initialization. Used for
+    // visibility windows and a late full background clear.
+    template<class Rect> void clear_region(const Rect &clip,bool pri,unsigned value){
+        if(!out||status)return;
+        if(!bounds(clip.left(),clip.top(),clip.right()+1,clip.bottom()+1)||value>(pri?255:65535)){status|=8;return;}
+        if(!room(20))return;
+        put(26,1);rect(clip.left(),clip.top(),clip.right()+1,clip.bottom()+1);put(pri?1:0,1);put(value,2);
+    }
+    // Tag 27: shared scaled indexed priority/drawmode operation. All
+    // destination-dependent shadow and occupancy decisions are replayed.
+    template<class Gfx,class Dest,class Pri,class Rect>
+    void priority_modes(Gfx &gfx,const Dest &dest,const Pri &pri,const Rect &clip,
+        u32 code,u32 color,int fx,int fy,int x,int y,u32 sx,u32 sy,u32 pmask,const u8 *modes){
+        if(!out||status)return;
+        const unsigned sw=gfx.width(),sh=gfx.height(),n=gfx.granularity();
+        if(&dest!=target||&pri!=priority||!modes||!sw||!sh||sw>64||sh>64||
+           !n||n>32||!gfx.elements()||!gfx.colors()||x<-4096||x>4096||y<-4096||y>4096){status|=8;return;}
+        const u32 dw=(sx*sw+0x8000)>>16,dh=(sy*sh+0x8000)>>16;
+        if(!dw||!dh)return;
+        if(dw>1024||dh>1024){status|=8;return;}
+        const int a=std::max(l,clip.left()),c=std::max(t,clip.top());
+        const int d=std::min(r,clip.right()+1),e=std::min(b,clip.bottom()+1);
+        if(a>=d||c>=e||x>=d||y>=e||x+int(dw)<=a||y+int(dh)<=c)return;
+        const u64 base=u64(gfx.colorbase())+u64(n)*(color%gfx.colors());
+        if(base+n>65536){status|=8;return;}
+        // A source pixel can also encounter a pending priority shadow.
+        const auto *table=gfx.palette().shadow_table();
+        if(table){
+            if(!shadow_identity){
+                if(!room(1+131072))return;
+                shadow_identity=table;put(21,1);
+                for(unsigned i=0;i<65536;++i){if(table[i]>65535)status|=8;put(table[i],2);}
+            }else if(shadow_identity!=table){status|=8;return;}
+        }
+        if(!room(42+n+u64(sw)*sh))return;
+        put(27,1);rect(a,c,d,e);put(x,4);put(y,4);
+        put(sw,2);put(sh,2);put(dw,2);put(dh,2);put(fx?1:0,1);put(fy?1:0,1);
+        put(base,2);put(pmask,4);put(n,1);
+        for(unsigned i=0;i<n;++i){if(modes[i]>3||(modes[i]>=2&&!table))status|=8;put(modes[i],1);}
+        const auto *src=gfx.get_data(code%gfx.elements());
+        for(unsigned yy=0;yy<sh;++yy)for(unsigned xx=0;xx<sw;++xx){
+            const auto p=src[yy*gfx.rowbytes()+xx];if(p>=n)status|=8;put(p,1);
+        }
+    }
+    // Tag 28: Seta palette-effect candidate row, prior to destination update.
+    template<class Dest>
+    bool palette_effect_row(const Dest &dest,int a,int y,int d,unsigned offset){
+        if(!out||status)return false;
+        if(&dest!=target||offset>65535||!bounds(a,y,d,y+1)){status|=8;return false;}
+        if(!room(19+3*u64(d-a)))return false;
+        put(28,1);rect(a,y,d,y+1);put(offset,2);return true;
+    }
+    void palette_effect_sample(unsigned mode,unsigned pen){
+        if(mode>2||pen>65535){status|=8;return;}
+        put(mode,1);put(pen,2);
+    }
     // Optional companion stream, correlated one-to-one with committed UPD1 records.
     // This samples the effective adjusted palette at callback completion, NOT final
     // OSD scanout. Palette changes between callbacks remain a separate gate.
@@ -549,6 +605,14 @@ struct suspend_scope {
     suspend_scope(){active=nullptr;}
     ~suspend_scope(){active=saved;}
     suspend_scope(const suspend_scope&)=delete;
+};
+struct priority_modes_guard {
+    scope *s=active;
+    template<class... Args> explicit priority_modes_guard(Args&&...args){
+        if(s){if(!s->sprite_depth)s->priority_modes(args...);++s->sprite_depth;}
+    }
+    ~priority_modes_guard(){if(s)--s->sprite_depth;}
+    priority_modes_guard(const priority_modes_guard&)=delete;
 };
 struct plain_sprite_guard {
     scope *s=active;
