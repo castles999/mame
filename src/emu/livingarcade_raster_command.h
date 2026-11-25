@@ -470,6 +470,19 @@ struct scope {
         if(!room(11))return;
         put(22,1);put(x,4);put(y,4);put(pen,2);
     }
+    // Tag 25: source rows from an independently rendered sprite surface.
+    // mode 0: Atari System 2 motion-object priority; mode 1: Jaleco
+    // Mega System 1 buffered sprites; mode 2: TC0180VCU palette/priority.
+    template<class Dest,class Source>
+    void layer_mix_row(const Dest &dest,int a,int y,int d,const Source *src,
+                       unsigned mode,unsigned base,unsigned flags,bool reverse=false){
+        if(!out||status)return;
+        if(&dest!=target||!src||mode>2||base>65535||flags>255||
+           !bounds(a,y,d,y+1)){status|=8;return;}
+        if(!room(21+2*u64(d-a)))return;
+        put(25,1);rect(a,y,d,y+1);put(mode,1);put(base,2);put(flags,1);
+        for(int x=a;x<d;++x)put(src[reverse?d-1-x:x-a],2);
+    }
     // Optional companion stream, correlated one-to-one with committed UPD1 records.
     // This samples the effective adjusted palette at callback completion, NOT final
     // OSD scanout. Palette changes between callbacks remain a separate gate.
