@@ -178,6 +178,7 @@
 
 
 #include "emu.h"
+#include "livingarcade_rgb_command.h"
 #include "segas32.h"
 
 #include "input.h" // for video debug keys
@@ -1823,6 +1824,9 @@ void segas32_state::mix_all_layers(int which, int xoffs, bitmap_rgb32 &bitmap, c
 		sprdy = 1;
 	}
 
+	if (auto *la = livingarcade_rgb_command::current)
+		la->s32_begin(bitmap, enablemask, m_mixer_control[which], m_paletteram[which]);
+
 	/* loop over rows */
 	for (int y = cliprect.min_y; y <= cliprect.max_y; y++, spry += sprdy)
 	{
@@ -1838,6 +1842,9 @@ void segas32_state::mix_all_layers(int which, int xoffs, bitmap_rgb32 &bitmap, c
 		layerbase[MIXER_LAYER_BITMAP] = get_layer_scanline(MIXER_LAYER_BITMAP, y);
 		layerbase[MIXER_LAYER_SPRITES] = get_layer_scanline(MIXER_LAYER_SPRITES, spry);
 		layerbase[MIXER_LAYER_BACKGROUND] = get_layer_scanline(MIXER_LAYER_BACKGROUND, y);
+
+		if (auto *la = livingarcade_rgb_command::current)
+			la->s32_row(bitmap, y, xoffs, cliprect.min_x, cliprect.max_x+1, sprx_start, sprdx, layerbase);
 
 		/* loop over columns */
 		for (int x = cliprect.min_x, sprx = sprx_start; x <= cliprect.max_x; x++, sprx += sprdx)
@@ -2075,7 +2082,9 @@ uint32_t segas32_state::screen_update_system32(screen_device &screen, bitmap_rgb
 	/* if the display is off, punt */
 	if (!m_system32_displayenable[0])
 	{
-		bitmap.fill(m_palette->black_pen(), cliprect);
+		livingarcade_rgb_command::scope la_rgb(bitmap, screen.frame_number(), cliprect);
+		livingarcade_rgb_command::fill(bitmap, m_palette->black_pen(), cliprect);
+		la_rgb.finish(bitmap);
 		return 0;
 	}
 
@@ -2098,7 +2107,10 @@ uint32_t segas32_state::screen_update_system32(screen_device &screen, bitmap_rgb
 	/* do the mixing */
 	{
 		auto profile = g_profiler.start(PROFILER_USER3);
+		// Scope only the mixer: source layers are independently generated.
+		livingarcade_rgb_command::scope la_rgb(bitmap, screen.frame_number(), cliprect);
 		mix_all_layers(0, 0, bitmap, cliprect, enablemask);
+		la_rgb.finish(bitmap);
 	}
 
 	if (LOG_SPRITES && machine().input().code_pressed(KEYCODE_L))
