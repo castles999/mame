@@ -1110,8 +1110,9 @@ void ppu2c0x_device::update_visible_scanline()
 {
 	// Capture the inputs of the latest generation of this row, not its
 	// final bitmap. Repeated partial updates replace this generation.
-	auto &la_out = livingarcade_rgb_command::rgb_output();
-	m_la_record_line = la_out.f && !la_out.failed && !la_out.capped &&
+	const int la_slot = livingarcade_raster_command::ppu_screen_slot(screen().tag(), screen_device_enumerator(machine().root_device()).count());
+	auto &la_out = la_slot == 1 ? livingarcade_rgb_command::secondary_rgb_output() : livingarcade_rgb_command::rgb_output();
+	m_la_record_line = la_slot >= 0 && la_out.f && !la_out.failed && !la_out.capped &&
 		m_scanline >= 0 && m_scanline < VISIBLE_SCREEN_HEIGHT;
 	if (m_la_record_line)
 	{
@@ -1490,12 +1491,13 @@ void ppu2c0x_device::render(bitmap_rgb32& bitmap, bool flipx, bool flipy, int sx
 u32 ppu2c0x_device::screen_update(screen_device& screen, bitmap_rgb32& bitmap, const rectangle& cliprect)
 {
 	render(bitmap, 0, 0, 0, 0, cliprect);
-	// One-screen proof only. Multi-screen will require stream identities
-	// and independently clocked publication witnesses.
-	livingarcade_rgb_command::scope la_rgb(bitmap, screen.frame_number(), cliprect);
+	// Keep both PPU streams independent; do not combine or renumber clocks.
+	const int la_slot = livingarcade_raster_command::ppu_screen_slot(screen.tag(), screen_device_enumerator(machine().root_device()).count());
+	auto &la_out = la_slot == 1 ? livingarcade_rgb_command::secondary_rgb_output() : livingarcade_rgb_command::rgb_output();
+	livingarcade_rgb_command::scope la_rgb(bitmap, screen.frame_number(), cliprect, &la_out);
 	if (la_rgb.out)
 	{
-		if (screen_device_enumerator(machine().root_device()).count() != 1 ||
+		if (la_slot < 0 || &screen != &this->screen() ||
 			cliprect.min_y < 0 || cliprect.max_y >= VISIBLE_SCREEN_HEIGHT ||
 			cliprect.min_x < 0 || cliprect.max_x >= VISIBLE_SCREEN_WIDTH)
 			la_rgb.status |= 8;
