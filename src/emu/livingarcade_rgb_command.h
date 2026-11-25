@@ -179,6 +179,50 @@ struct scope {
             put(event.x,2);put(event.kind,1);put(event.pen,1);put(event.color,4);
         }
     }
+    // Tags 11/12: System 32 independent mixer state and layer samples.
+    // Raw palette RAM and mixer registers are inputs, not resolved colors.
+    bool s32_initialized=false;
+    unsigned s32_mask=0;
+    template<class Dest,class Regs,class Palette>
+    void s32_begin(const Dest &dest,unsigned enabled,const Regs &regs,const Palette &pal){
+        if(status)return;
+        if(&dest!=target||s32_initialized||enabled>255){status|=8;return;}
+        if(!room(2+128+32768))return;
+        s32_initialized=true;s32_mask=0xc0;
+        for(unsigned i=0;i<6;++i)if((enabled&(1U<<i))&&(regs[0x10+i]&15))s32_mask|=1U<<i;
+        put(11,1);put(enabled,1);
+        for(unsigned i=0;i<64;++i)put(regs[i],2);
+        for(unsigned i=0;i<16384;++i)put(pal[i],2);
+    }
+    template<class Dest,class Layers>
+    void s32_row(const Dest &dest,int y,int xoffs,int start,int end,int sprx,int sprdx,const Layers &layers){
+        if(status)return;
+        if(&dest!=target||!s32_initialized||xoffs!=0||!bounds(start,y,end,y+1)||
+           (sprdx!=1&&sprdx!=-1)||start<0||end>416||y<0||y>=224||
+           sprx<0||sprx>=416||sprx+(end-start-1)*sprdx<0||sprx+(end-start-1)*sprdx>=416){status|=8;return;}
+        unsigned count=0;
+        for(unsigned i=0;i<8;++i)if(s32_mask&(1U<<i))++count;
+        // One layer at a time, run-coded only when shorter than literals.
+        if(!room(17+count*(1+2*u64(end-start))))return;
+        put(12,1);rect(start,y,end,y+1);
+        for(unsigned i=0;i<8;++i){
+            if(!(s32_mask&(1U<<i)))continue;
+            const auto *src=layers[i];
+            const int x0=i==6?sprx:start,step=i==6?sprdx:1;
+            unsigned runs=1;
+            for(int x=1;x<end-start;++x)if(src[x0+x*step]!=src[x0+(x-1)*step])++runs;
+            const bool compact=4*runs<2*unsigned(end-start);
+            put(compact?1:0,1);
+            if(compact){
+                int x=0;
+                while(x<end-start){
+                    const auto pen=src[x0+x*step];int next=x+1;
+                    while(next<end-start&&src[x0+next*step]==pen)++next;
+                    put(next-x,2);put(pen,2);x=next;
+                }
+            }else for(int x=0;x<end-start;++x)put(src[x0+x*step],2);
+        }
+    }
     template<class Bitmap> void finish(const Bitmap &dest){
         if(!out||finished)return;
         finished=true;u64 hash=offset;
