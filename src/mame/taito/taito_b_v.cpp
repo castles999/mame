@@ -1,6 +1,7 @@
 // license:GPL-2.0+
 // copyright-holders:Jarek Burczynski
 #include "emu.h"
+#include "livingarcade_raster_command.h"
 #include "taito_b.h"
 
 void hitice_state::pixelram_w(offs_t offset, uint16_t data, uint16_t mem_mask)
@@ -70,14 +71,20 @@ void taitob_c_state::video_start()
 
 uint32_t taitob_state::screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
+	livingarcade_raster_command::scope la_commands(bitmap, screen.priority(), screen.frame_number(), cliprect);
+	la_commands.seed_priority(screen.priority());
 	uint8_t const video_control = m_tc0180vcu->get_videoctrl();
 
 	if (BIT(~video_control, 5))
 	{
+		livingarcade_raster_command::clear(1, 0);
 		bitmap.fill(0, cliprect);
+		la_commands.finish(bitmap, screen.priority());
+		if (screen.has_palette()) la_commands.capture_palette(bitmap, screen.palette());
 		return 0;
 	}
 
+	la_commands.undefined_color();
 	/* Draw playfields */
 	m_tc0180vcu->tilemap_draw(screen, bitmap, cliprect, 0, 1);
 	m_tc0180vcu->draw_framebuffer(bitmap, cliprect, 1);
@@ -85,6 +92,8 @@ uint32_t taitob_state::screen_update(screen_device &screen, bitmap_ind16 &bitmap
 	m_tc0180vcu->draw_framebuffer(bitmap, cliprect, 0);
 	m_tc0180vcu->tilemap_draw(screen, bitmap, cliprect, 2, 0);
 
+	la_commands.finish(bitmap, screen.priority());
+	if (screen.has_palette()) la_commands.capture_palette(bitmap, screen.palette());
 	return 0;
 }
 
