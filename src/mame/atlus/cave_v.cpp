@@ -322,7 +322,7 @@ inline void cave_state::tilemap_draw(int chip,
 u32 cave_state::screen_update(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect)
 {
 	livingarcade_rgb_command::scope la_rgb(bitmap, screen.frame_number(), cliprect);
-	la_rgb.cave_priority = true;
+	la_rgb.cave_begin();
 	for (int layer = 0; layer < 4; layer++)
 	{
 		if (m_tilemap[layer])
