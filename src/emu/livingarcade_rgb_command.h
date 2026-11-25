@@ -17,6 +17,9 @@ struct scope {
     int w,h,l,t,r,b;
     u32 status=0,ops=0;
     unsigned depth=0;
+    // Explicitly enabled by the standard Cave callback; other RGB users retain
+    // the original no-priority restriction.
+    bool cave_priority=false;
     bool finished=false;
     std::vector<u8> payload;
     template<class Bitmap,class Rect>
@@ -34,7 +37,7 @@ struct scope {
     scope(const scope&)=delete;
     void put(u64 v,unsigned n){for(unsigned i=0;i<n;++i)payload.push_back(u8(v>>(8*i)));}
     bool room(u64 n){
-        if(status)return false;
+        if(!out||status)return false;
         if(n>max_payload-payload.size()||ops>=65536){status|=2;return false;}
         ++ops;return true;
     }
@@ -64,11 +67,12 @@ struct scope {
               unsigned mask,unsigned value,bool opaque,unsigned alpha){
         if(status)return;
         if(&dest!=target||sizeof(typename Dest::pixel_t)!=4||!clut||
-           (pcode&0xffff)!=0xff00||alpha!=255||sx<0||sy<0||ex>pix.width()||ey>pix.height()||
+           (!cave_priority&&(pcode&0xffff)!=0xff00)||alpha!=255||sx<0||sy<0||ex>pix.width()||ey>pix.height()||
            sx>=ex||sy>=ey||!bounds(dx,dy,dx+ex-sx,dy+ey-sy)){status|=4;return;}
         const u64 n=u64(ex-sx)*(ey-sy);
-        if(!room(17+5*n))return;
-        put(3,1);rect(dx,dy,dx+ex-sx,dy+ey-sy);
+        if(!room(17+5*n+(cave_priority?2:0)))return;
+        put(cave_priority?15:3,1);rect(dx,dy,dx+ex-sx,dy+ey-sy);
+        if(cave_priority)put(pcode&0xffff,2);
         for(int y=sy;y<ey;++y)for(int x=sx;x<ex;++x){
             const bool selected=opaque||((flags.pix(y,x)&mask)==value);
             put(selected?1:0,1);
@@ -242,6 +246,23 @@ struct scope {
         if(!room(17+last-first))return;
         put(14,1);rect(l,y,r,y+1);
         for(int x=first;x<last;++x)put(source[x*256],1);
+    }
+    // Tag 16: source sprite bitmap before the standard Cave priority
+    // callback. Zoom/sprite-list generation remains lowered by sprite013.
+    template<class Dest,class Source,class Color>
+    void cave_sprite_row(const Dest &dest,int y,int a,int d,const Source *src,
+                         const Color *palette,unsigned colors,unsigned granularity){
+        if(status)return;
+        if(!cave_priority||&dest!=target||!src||!palette||!colors||!granularity||
+           !bounds(a,y,d,y+1)){status|=8;return;}
+        if(!room(17+6*u64(d-a)))return;
+        put(16,1);rect(a,y,d,y+1);
+        for(int x=a;x<d;++x){
+            const unsigned pixel=src[x];
+            const unsigned col=(pixel>>8)&63;
+            put(pixel,2);
+            put(pixel?u32(palette[(pixel&255)+(col%colors)*granularity]):0,4);
+        }
     }
     template<class Bitmap> void finish(const Bitmap &dest){
         if(!out||finished)return;
