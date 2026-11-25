@@ -89,6 +89,7 @@
 *************************************************************************/
 
 #include "emu.h"
+#include "livingarcade_raster_command.h"
 #include "system1.h"
 #include "video/resnet.h"
 
@@ -503,11 +504,17 @@ void system1_state::draw_sprites(bitmap_ind16 &bitmap, const rectangle &cliprect
 
 void system1_state::video_update_common(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect, bitmap_ind16 &fgpixmap, bitmap_ind16 **bgpixmaps, const int *bgrowscroll, int bgyscroll, int spritexoffs)
 {
+	livingarcade_raster_command::scope la_commands(bitmap, screen.priority(), screen.frame_number(), cliprect);
+	la_commands.seed_priority(screen.priority());
 	if (m_video_mode & 0x10)
 	{
+		livingarcade_raster_command::clear(1, 0);
 		bitmap.fill(0, cliprect);
+		la_commands.finish(bitmap, screen.priority());
+		la_commands.capture_palette(bitmap, *m_palette);
 		return;
 	}
+	la_commands.undefined_color();
 	// first clear the sprite bitmap and draw sprites within this area
 	m_sprite_bitmap.fill(0, cliprect);
 	draw_sprites(m_sprite_bitmap, cliprect, spritexoffs);
@@ -524,6 +531,7 @@ void system1_state::video_update_common(screen_device &screen, bitmap_ind16 &bit
 		// get the base of the left and right pixmaps for the effective background Y
 		const u16 *const bgbase[2] = { &bgpixmaps[(bgy >> 8) * 2 + 0]->pix(bgy & 0xff), &bgpixmaps[(bgy >> 8) * 2 + 1]->pix(bgy & 0xff) };
 
+		const bool la_row = la_commands.prom_row(bitmap, screen.priority(), y, m_lookup_prom);
 		// iterate over pixels
 		for (int x = cliprect.min_x; x <= cliprect.max_x; x++)
 		{
@@ -531,6 +539,12 @@ void system1_state::video_update_common(screen_device &screen, bitmap_ind16 &bit
 			const u16 fgpix = fgbase[(x / 2) & 0xff];
 			const u16 bgpix = bgbase[bgx >> 8][bgx & 0xff];
 			const u16 sprpix = sprbase[x];
+			if (la_row)
+			{
+				la_commands.put(sprpix, 2);
+				la_commands.put(fgpix, 2);
+				la_commands.put(bgpix, 2);
+			}
 
 			// using the sprite, background, and foreground pixels, look up the color behavior
 			const u8 lookup_index = (((sprpix & 0xf) == 0) << 0) |
@@ -554,6 +568,8 @@ void system1_state::video_update_common(screen_device &screen, bitmap_ind16 &bit
 				dstbase[x] = 0x400 | (bgpix & 0x1ff);
 		}
 	}
+	la_commands.finish(bitmap, screen.priority());
+	la_commands.capture_palette(bitmap, *m_palette);
 }
 
 
