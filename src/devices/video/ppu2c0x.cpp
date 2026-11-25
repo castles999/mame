@@ -26,6 +26,7 @@
 ******************************************************************************/
 
 #include "emu.h"
+#include "livingarcade_rgb_command.h"
 #include "ppu2c0x.h"
 
 #include "screen.h"
@@ -604,6 +605,21 @@ void ppu2c0x_device::shift_tile_plane_data(u8& pix)
 	m_planebuf[1] <<= 1;
 }
 
+void ppu2c0x_device::la_source_event(int x, unsigned kind, unsigned pen, u32 color)
+{
+	if (!m_la_record_line || x < 0 || x >= VISIBLE_SCREEN_WIDTH)
+		return;
+	auto &row = m_la_rows[m_scanline];
+	if (!row.valid)
+		return;
+	if (row.events.size() >= 1024 || kind > 4 || pen > 3)
+	{
+		row.valid = false;
+		return;
+	}
+	row.events.push_back({u16(x), u8(kind), u8(pen), color});
+}
+
 void ppu2c0x_device::draw_tile_pixel(u8 pix, int color, u32 back_pen, u32*& dest)
 {
 	const u16 palval = pix ? m_palette_ram[((4 * color) + pix) & 0x1f] : back_pen;
@@ -625,6 +641,11 @@ void ppu2c0x_device::draw_tile(u8* line_priority, int color_byte, int color_bits
 
 		if ((start_x + i) >= 0 && (start_x + i) < VISIBLE_SCREEN_WIDTH)
 		{
+			if (m_la_record_line)
+			{
+				const u16 palval = pix ? m_palette_ram[((4 * color) + pix) & 0x1f] : back_pen;
+				la_source_event(start_x + i, 0, pix, pen_color(apply_grayscale_and_emphasis(palval)));
+			}
 			draw_tile_pixel(pix, color, back_pen, dest);
 
 			// priority marking
@@ -713,6 +734,7 @@ void ppu2c0x_device::draw_background(u8* line_priority)
 			draw_back_pen(dest, m_back_color);
 			dest++;
 
+			la_source_event(i, 2, 0, 0);
 			line_priority[i] ^= 0x02;
 		}
 	}
@@ -729,6 +751,15 @@ void ppu2c04_clone_device::draw_background(u8* line_priority)
 
 void ppu2c0x_device::draw_back_pen(u32* dest, int back_pen)
 {
+	if (m_la_record_line)
+	{
+		const auto addr = reinterpret_cast<std::uintptr_t>(dest);
+		const auto base = reinterpret_cast<std::uintptr_t>(&m_bitmap.pix(m_scanline, 0));
+		if (addr >= base && addr - base < VISIBLE_SCREEN_WIDTH * sizeof(u32) && (addr - base) % sizeof(u32) == 0)
+			la_source_event((addr - base) / sizeof(u32), 1, 0, pen_color(apply_grayscale_and_emphasis(back_pen)));
+		else
+			m_la_rows[m_scanline].valid = false;
+	}
 	*dest = pen_color(apply_grayscale_and_emphasis(back_pen));
 }
 
@@ -797,6 +828,11 @@ void ppu2c0x_device::draw_sprite_pixel_low(bitmap_rgb32 &bitmap, int pixel_data,
 		/* has the background (or another sprite) already been drawn here? */
 		if ((sprite_xpos + pixel) < VISIBLE_SCREEN_WIDTH)
 		{
+			if (m_la_record_line)
+			{
+				const u16 palval = m_palette_ram[((4 * color) | pixel_data) & 0x1f];
+				la_source_event(sprite_xpos + pixel, 3, pixel_data, pen_color(apply_grayscale_and_emphasis(palval)));
+			}
 			if (!line_priority[sprite_xpos + pixel])
 			{
 				/* no, draw */
@@ -818,6 +854,11 @@ void ppu2c0x_device::draw_sprite_pixel_high(bitmap_rgb32 &bitmap, int pixel_data
 	{
 		if ((sprite_xpos + pixel) < VISIBLE_SCREEN_WIDTH)
 		{
+			if (m_la_record_line)
+			{
+				const u16 palval = m_palette_ram[((4 * color) | pixel_data) & 0x1f];
+				la_source_event(sprite_xpos + pixel, 4, pixel_data, pen_color(apply_grayscale_and_emphasis(palval)));
+			}
 			/* has another sprite been drawn here? */
 			if (BIT(~line_priority[sprite_xpos + pixel], 0))
 			{
@@ -1067,6 +1108,17 @@ void ppu2c0x_device::update_visible_disabled_scanline()
 
 void ppu2c0x_device::update_visible_scanline()
 {
+	// Capture the inputs of the latest generation of this row, not its
+	// final bitmap. Repeated partial updates replace this generation.
+	auto &la_out = livingarcade_rgb_command::rgb_output();
+	m_la_record_line = la_out.f && !la_out.failed && !la_out.capped &&
+		m_scanline >= 0 && m_scanline < VISIBLE_SCREEN_HEIGHT;
+	if (m_la_record_line)
+	{
+		auto &row = m_la_rows[m_scanline];
+		row.events.clear();
+		row.valid = true;
+	}
 	/* Render this scanline if appropriate */
 	if (m_regs[PPU_CONTROL1] & (PPU_CONTROL1_BACKGROUND | PPU_CONTROL1_SPRITES))
 	{
@@ -1077,6 +1129,7 @@ void ppu2c0x_device::update_visible_scanline()
 		update_visible_disabled_scanline();
 	}
 
+	m_la_record_line = false;
 	if (m_scanline_timer->remaining() == attotime::zero)
 	{
 		scanline_increment_fine_ycounter();
@@ -1437,5 +1490,23 @@ void ppu2c0x_device::render(bitmap_rgb32& bitmap, bool flipx, bool flipy, int sx
 u32 ppu2c0x_device::screen_update(screen_device& screen, bitmap_rgb32& bitmap, const rectangle& cliprect)
 {
 	render(bitmap, 0, 0, 0, 0, cliprect);
+	// One-screen proof only. Multi-screen will require stream identities
+	// and independently clocked publication witnesses.
+	livingarcade_rgb_command::scope la_rgb(bitmap, screen.frame_number(), cliprect);
+	if (la_rgb.out)
+	{
+		if (screen_device_enumerator(machine().root_device()).count() != 1 ||
+			cliprect.min_y < 0 || cliprect.max_y >= VISIBLE_SCREEN_HEIGHT ||
+			cliprect.min_x < 0 || cliprect.max_x >= VISIBLE_SCREEN_WIDTH)
+			la_rgb.status |= 8;
+		else
+			for (int y = cliprect.min_y; y <= cliprect.max_y; ++y)
+			{
+				const auto &row = m_la_rows[y];
+				if (!row.valid) { la_rgb.status |= 8; break; }
+				la_rgb.ppu_row(bitmap, y, row.events);
+			}
+	}
+	la_rgb.finish(bitmap);
 	return 0;
 }
