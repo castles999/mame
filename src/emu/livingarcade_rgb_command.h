@@ -289,6 +289,37 @@ struct scope {
     void metro_sample(bool selected,u32 color){
         put(selected?1:0,1);put(selected?color:0,4);
     }
+    // Tags 21/22: Psikyo sampled colors with independent alpha and z state.
+    // 0 skip, 1 replace, 2 blend (including alpha=0, which clears high bits).
+    bool psikyo=false;
+    void psikyo_begin(){
+        if(!out||status)return;
+        if(ops||psikyo){status|=8;return;}
+        if(!room(1))return;
+        psikyo=true;put(22,1);
+    }
+    template<class Dest>
+    bool psikyo_row(const Dest &dest,int a,int y,int d,unsigned z,bool sprite){
+        if(!out||status)return false;
+        if(!psikyo||&dest!=target||z>65535||(!sprite&&z)||!bounds(a,y,d,y+1)){status|=8;return false;}
+        if(!room(20+6*u64(d-a)))return false;
+        put(21,1);rect(a,y,d,y+1);put(z,2);put(sprite?1:0,1);return true;
+    }
+    void psikyo_sample(unsigned mode,unsigned alpha,u32 color){
+        if(mode>2||alpha>255){status|=8;return;}
+        put(mode,1);put(mode==2?alpha:0,1);put(mode?color:0,4);
+    }
+    template<class Dest,class Color,class Get>
+    void psikyo_sprite_row(const Dest &dest,int a,int y,int d,unsigned z,const Color *pal,
+                           int alpha,const u8 *alphatable,Get get){
+        if(!psikyo_row(dest,a,y,d,z,true))return;
+        for(int x=a;x<d;++x){
+            const unsigned p=get(x-a);
+            if(!p){psikyo_sample(0,0,0);continue;}
+            const unsigned level=alpha<0?alphatable[p]:unsigned(alpha);
+            psikyo_sample(level==255?1:2,level,pal[p]);
+        }
+    }
     template<class Bitmap> void finish(const Bitmap &dest){
         if(!out||finished)return;
         finished=true;u64 hash=offset;
