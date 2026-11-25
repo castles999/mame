@@ -4,6 +4,7 @@
 // Sprite/Framebuffer emulation by Jarek Burczynski (from taito_b.cpp)
 
 #include "emu.h"
+#include "livingarcade_raster_command.h"
 #include "tc0180vcu.h"
 #include "screen.h"
 
@@ -501,6 +502,18 @@ void tc0180vcu_device::draw_framebuffer(bitmap_ind16 &bitmap, const rectangle &c
 	auto profile = g_profiler.start(PROFILER_USER1);
 
 	priority <<= 4;
+	if (auto *la = livingarcade_raster_command::active)
+	{
+		if (!BIT(m_video_control, 3) || !priority)
+			for (int y = myclip.min_y; y <= myclip.max_y; ++y)
+			{
+				const bool flip = BIT(m_video_control, 4);
+				la->layer_mix_row(bitmap, myclip.min_x, flip ? bitmap.height()-1-y : y,
+					myclip.max_x+1, &m_framebuffer[m_framebuffer_page].pix(y, myclip.min_x),
+					2, m_fb_color_base, BIT(m_video_control, 3) ? 2 : unsigned(priority != 0), flip);
+			}
+	}
+
 
 	if (BIT(m_video_control, 3))
 	{
