@@ -2,6 +2,7 @@
 // copyright-holders:Ernesto Corvi,Tim Lindquist,Carlos A. Lozano,Bryan McPhail,Jarek Parchanski,Nicola Salmoria,Tomasz Slanina,Phil Stroffolino,Acho A. Tang,Victor Trucco
 // thanks-to:Marco Cassili
 #include "emu.h"
+#include "livingarcade_raster_command.h"
 #include "snk.h"
 
 /*******************************************************************************
@@ -943,6 +944,9 @@ uint32_t marvins_state::screen_update_marvins(screen_device &screen, bitmap_ind1
 
 uint32_t snk_state::screen_update_tnk3(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
+	livingarcade_raster_command::scope la_commands(bitmap, screen.priority(), screen.frame_number(), cliprect);
+	la_commands.undefined_color();
+	la_commands.seed_priority(screen.priority());
 	m_bg_tilemap->set_scrollx(0, m_bg_scrollx);
 	m_bg_tilemap->set_scrolly(0, m_bg_scrolly);
 
@@ -950,6 +954,8 @@ uint32_t snk_state::screen_update_tnk3(screen_device &screen, bitmap_ind16 &bitm
 	tnk3_draw_sprites(bitmap, cliprect, m_sp16_scrollx, m_sp16_scrolly);
 	m_tx_tilemap->draw(screen, bitmap, cliprect, 0, 0);
 
+	la_commands.finish(bitmap, screen.priority());
+	la_commands.capture_palette(bitmap, *m_palette);
 	return 0;
 }
 
@@ -968,6 +974,9 @@ uint32_t snk_state::screen_update_fitegolf2(screen_device &screen, bitmap_ind16 
 
 uint32_t ikari_state::screen_update_ikari(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
+	livingarcade_raster_command::scope la_commands(bitmap, screen.priority(), screen.frame_number(), cliprect);
+	la_commands.undefined_color();
+	la_commands.seed_priority(screen.priority());
 	m_bg_tilemap->set_scrollx(0, m_bg_scrollx);
 	m_bg_tilemap->set_scrolly(0, m_bg_scrolly);
 
@@ -978,12 +987,17 @@ uint32_t ikari_state::screen_update_ikari(screen_device &screen, bitmap_ind16 &b
 	ikari_draw_sprites(bitmap, cliprect, 25, m_sp16_scrollx, m_sp16_scrolly, m_spriteram + 0x800, 2 );
 
 	m_tx_tilemap->draw(screen, bitmap, cliprect, 0, 0);
+	la_commands.finish(bitmap, screen.priority());
+	la_commands.capture_palette(bitmap, *m_palette);
 	return 0;
 }
 
 
 uint32_t bermudat_state::screen_update_gwar(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
+	livingarcade_raster_command::scope la_commands(bitmap, screen.priority(), screen.frame_number(), cliprect);
+	la_commands.undefined_color();
+	la_commands.seed_priority(screen.priority());
 	m_bg_tilemap->set_scrollx(0, m_bg_scrollx);
 	m_bg_tilemap->set_scrolly(0, m_bg_scrolly);
 
@@ -995,6 +1009,8 @@ uint32_t bermudat_state::screen_update_gwar(screen_device &screen, bitmap_ind16 
 
 	m_tx_tilemap->draw(screen, bitmap, cliprect, 0, 0);
 
+	la_commands.finish(bitmap, screen.priority());
+	la_commands.capture_palette(bitmap, *m_palette);
 	return 0;
 }
 
