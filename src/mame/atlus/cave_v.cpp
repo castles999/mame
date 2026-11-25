@@ -37,6 +37,7 @@
 **************************************************************************/
 
 #include "emu.h"
+#include "livingarcade_rgb_command.h"
 #include "cave.h"
 
 #include "crsshair.h"
@@ -320,13 +321,15 @@ inline void cave_state::tilemap_draw(int chip,
 
 u32 cave_state::screen_update(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect)
 {
+	livingarcade_rgb_command::scope la_rgb(bitmap, screen.frame_number(), cliprect);
+	la_rgb.cave_priority = true;
 	for (int layer = 0; layer < 4; layer++)
 	{
 		if (m_tilemap[layer])
 			m_tilemap[layer]->prepare();
 	}
 
-	bitmap.fill(m_palette[0]->pen_color(m_background_pen[0]), cliprect);
+	livingarcade_rgb_command::fill(bitmap, m_palette[0]->pen_color(m_background_pen[0]), cliprect);
 	screen.priority().fill(0, cliprect);
 
 	/*
@@ -352,6 +355,7 @@ u32 cave_state::screen_update(screen_device &screen, bitmap_rgb32 &bitmap, const
 		}
 	}
 	m_spritegen[0]->draw(screen, bitmap, cliprect);
+	la_rgb.finish(bitmap);
 	return 0;
 }
 
