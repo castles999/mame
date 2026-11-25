@@ -10,6 +10,7 @@
 ***************************************************************************/
 
 #include "emu.h"
+#include "livingarcade_raster_command.h"
 #include "x1_012.h"
 
 DEFINE_DEVICE_TYPE(X1_012, x1_012_device, "x1_012", "Seta X1-012 Tile Layer")
@@ -162,6 +163,8 @@ void x1_012_device::draw_tilemap_palette_effect(bitmap_ind16 &bitmap, const rect
 	for (int y = cliprect.min_y; y <= cliprect.max_y; y++)
 	{
 		u16 *const dest = &bitmap.pix(y);
+		auto *la = livingarcade_raster_command::active;
+		const bool la_row = la && la->palette_effect_row(bitmap, cliprect.min_x, y, cliprect.max_x+1, palette().entries()/2);
 
 		for (int x = cliprect.min_x; x <= cliprect.max_x; x++)
 		{
@@ -175,6 +178,11 @@ void x1_012_device::draw_tilemap_palette_effect(bitmap_ind16 &bitmap, const rect
 				p = src_bitmap.pix((y - scrolly - 256) & height_mask, (x - scrollx - 512) & width_mask);
 			}
 
+			if (la_row)
+			{
+				const unsigned mode = !(p & opaque_mask) ? 0 : (p & pixel_effect_mask) == pixel_effect_mask ? 2 : 1;
+				la->palette_effect_sample(mode, mode == 1 ? palette().pen(p) : 0);
+			}
 			// draw not transparent pixels
 			if (p & opaque_mask)
 			{
