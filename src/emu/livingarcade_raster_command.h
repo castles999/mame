@@ -180,7 +180,7 @@ struct scope {
     scope(const scope&)=delete;scope& operator=(const scope&)=delete;
     void put(u64 v,unsigned n){for(unsigned i=0;i<n;++i)payload.push_back(u8(v>>(8*i)));}
     bool room(u64 n){
-        if(status)return false;
+        if(!out||status)return false;
         if(n>max_payload-payload.size()||ops>=65536){status|=2;return false;}
         ++ops;return true;
     }
@@ -432,21 +432,29 @@ struct scope {
     const void *shadow_identity=nullptr;
     template<class Gfx,class Dest,class Rect>
     void shadow_sprite(Gfx &gfx,const Dest &dest,const Rect &clip,u32 code,u32 color,
-                       int fx,int fy,int x,int y,const u8 *modes,unsigned none,unsigned shadow){
+                       int fx,int fy,int x,int y,const u8 *modes,unsigned none,unsigned shadow,unsigned source_mode){
         if(status)return;
-        const auto *table=gfx.palette().shadow_table();
-        if(!table||!modes||gfx.granularity()>32||!gfx.granularity()){status|=8;return;}
-        u32 mask=0;
+        if(!modes||gfx.granularity()>32||!gfx.granularity()){status|=8;return;}
+        u32 mask=0,source=0;
         for(unsigned i=0;i<gfx.granularity();++i){
             if(modes[i]==shadow)mask|=u32(1)<<i;
+            else if(modes[i]==source_mode)source|=u32(1)<<i;
             else if(modes[i]!=none){status|=8;return;}
         }
-        if(!shadow_identity){
-            if(!room(1+131072))return;
-            shadow_identity=table;put(21,1);
-            for(unsigned i=0;i<65536;++i){if(table[i]>65535)status|=8;put(table[i],2);}
-        }else if(shadow_identity!=table){status|=8;return;}
-        plain_sprite(gfx,dest,clip,code,color,fx,fy,x,y,mask,20,0);
+        if(mask){
+            const auto *table=gfx.palette().shadow_table();
+            if(!table){status|=8;return;}
+            if(!shadow_identity){
+                if(!room(1+131072))return;
+                shadow_identity=table;put(21,1);
+                for(unsigned i=0;i<65536;++i){if(table[i]>65535)status|=8;put(table[i],2);}
+            }else if(shadow_identity!=table){status|=8;return;}
+        }
+        const auto before=payload.size();
+        plain_sprite(gfx,dest,clip,code,color,fx,fy,x,y,mask,24,0);
+        if(status||payload.size()==before)return;
+        if(payload.size()>max_payload-4){status|=2;return;}
+        put(source,4);
     }
     // Tags 22/23: generated stars with a destination-pen predicate.
     bool star_initialized=false;
