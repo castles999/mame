@@ -374,6 +374,34 @@ struct scope {
         put(16,1);rect(l,y,r,y+1);put(priority_bits,1);
         for(int x=l;x<r;++x)put(src[x],2);
     }
+    // Tag 17: decoded source sprite, rounded destination dimensions and
+    // TC0360 mixer inputs. Sampling, visibility and palette-bit blending
+    // are reconstructed independently, not read from the destination.
+    template<class Gfx,class Dest,class Pri,class Rect,class TilePri>
+    void f2_sprite(Gfx &gfx,const Dest &dest,const Pri &pri,const Rect &clip,
+                   u32 code,u32 color,int fx,int fy,int x,int y,int dw,int dh,
+                   bool mixer,u64 mask,const TilePri &tilepri,unsigned sprpri,unsigned blend){
+        if(status||dw==0||dh==0)return;
+        const unsigned sw=gfx.width(),sh=gfx.height();
+        if(&dest!=target||&pri!=priority||!gfx.elements()||!gfx.colors()||
+           !sw||!sh||sw>64||sh>64||dw<0||dh<0||dw>1024||dh>1024||
+           x<-4096||x>4096||y<-4096||y>4096||sprpri>15||
+           (blend!=0&&blend!=0x40&&blend!=0x80&&blend!=0xc0)){status|=8;return;}
+        const int cl=std::max(l,clip.left()),ct=std::max(t,clip.top());
+        const int cr=std::min(r,clip.right()+1),cb=std::min(b,clip.bottom()+1);
+        if(cl>=cr||ct>=cb||x>=cr||y>=cb||x+dw<=cl||y+dh<=ct)return;
+        const u64 base=u64(gfx.colorbase())+u64(gfx.granularity())*(color%gfx.colors());
+        if(base>65535){status|=8;return;}
+        if(!room(53+u64(sw)*sh))return;
+        put(17,1);rect(cl,ct,cr,cb);put(x,4);put(y,4);
+        put(sw,2);put(sh,2);put(dw,2);put(dh,2);
+        put(fx?1:0,1);put(fy?1:0,1);put(base,2);put(mixer?1:0,1);
+        put(mixer?0:mask,8);
+        for(unsigned i=0;i<5;++i){if(mixer&&tilepri[i]>15)status|=8;put(mixer?tilepri[i]:0,1);}
+        put(mixer?sprpri:0,1);put(mixer?blend:0,1);
+        const auto *src=gfx.get_data(code%gfx.elements());
+        for(unsigned yy=0;yy<sh;++yy)for(unsigned xx=0;xx<sw;++xx)put(src[yy*gfx.rowbytes()+xx],1);
+    }
     // Optional companion stream, correlated one-to-one with committed UPD1 records.
     // This samples the effective adjusted palette at callback completion, NOT final
     // OSD scanout. Palette changes between callbacks remain a separate gate.
