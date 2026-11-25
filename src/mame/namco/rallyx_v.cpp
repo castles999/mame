@@ -30,6 +30,7 @@ needs more color combination to render its graphics.
 ***************************************************************************/
 
 #include "emu.h"
+#include "livingarcade_raster_command.h"
 #include "rallyx.h"
 #include "video/resnet.h"
 #include "screen.h"
@@ -411,6 +412,8 @@ void rallyx_state::plot_star( bitmap_ind16 &bitmap, const rectangle &cliprect, i
 	if (flip_screen_y())
 		y = 255 - y;
 
+	if (auto *la = livingarcade_raster_command::active)
+		la->conditional_star(bitmap, x, y, STARS_COLOR_BASE + color, *m_palette);
 	if (m_palette->pen_indirect(bitmap.pix(y, x) % 0x144) == 0)
 		bitmap.pix(y, x) = STARS_COLOR_BASE + color;
 }
@@ -551,6 +554,8 @@ void rallyx_state::locomotn_draw_bullets( bitmap_ind16 &bitmap, const rectangle 
 
 uint32_t rallyx_state::screen_update_rallyx(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
+	livingarcade_raster_command::scope la_commands(bitmap, screen.priority(), screen.frame_number(), cliprect);
+	la_commands.undefined_color();
 	/* the radar tilemap is just 8x32. We rely on the tilemap code to repeat it across
 	   the screen, and clip it to only the position where it is supposed to be shown */
 	rectangle fg_clip = cliprect;
@@ -567,6 +572,7 @@ uint32_t rallyx_state::screen_update_rallyx(screen_device &screen, bitmap_ind16 
 		fg_clip.min_x = 28 * 8;
 	}
 
+	livingarcade_raster_command::clear(2, 0);
 	screen.priority().fill(0, cliprect);
 
 	m_bg_tilemap->draw(screen, bitmap, bg_clip, 0, 0);
@@ -578,12 +584,16 @@ uint32_t rallyx_state::screen_update_rallyx(screen_device &screen, bitmap_ind16 
 	rallyx_draw_sprites(screen, bitmap, cliprect);
 	rallyx_draw_bullets(bitmap, cliprect, false);
 
+	la_commands.finish(bitmap, screen.priority());
+	la_commands.capture_palette(bitmap, *m_palette);
 	return 0;
 }
 
 
 uint32_t rallyx_state::screen_update_jungler(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
+	livingarcade_raster_command::scope la_commands(bitmap, screen.priority(), screen.frame_number(), cliprect);
+	la_commands.undefined_color();
 	/* the radar tilemap is just 8x32. We rely on the tilemap code to repeat it across
 	   the screen, and clip it to only the position where it is supposed to be shown */
 	rectangle fg_clip = cliprect;
@@ -600,6 +610,7 @@ uint32_t rallyx_state::screen_update_jungler(screen_device &screen, bitmap_ind16
 		fg_clip.min_x = 28 * 8;
 	}
 
+	livingarcade_raster_command::clear(2, 0);
 	screen.priority().fill(0, cliprect);
 
 	// tile priority doesn't seem to be supported in Jungler
@@ -615,12 +626,16 @@ uint32_t rallyx_state::screen_update_jungler(screen_device &screen, bitmap_ind16
 	if (m_stars_enable)
 		draw_stars(bitmap, cliprect);
 
+	la_commands.finish(bitmap, screen.priority());
+	la_commands.capture_palette(bitmap, *m_palette);
 	return 0;
 }
 
 
 uint32_t rallyx_state::screen_update_locomotn(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
+	livingarcade_raster_command::scope la_commands(bitmap, screen.priority(), screen.frame_number(), cliprect);
+	la_commands.undefined_color();
 	/* the radar tilemap is just 8x32. We rely on the tilemap code to repeat it across
 	   the screen, and clip it to only the position where it is supposed to be shown */
 	rectangle fg_clip = cliprect;
@@ -646,6 +661,7 @@ uint32_t rallyx_state::screen_update_locomotn(screen_device &screen, bitmap_ind1
 		fg_clip.min_x = 28 * 8;
 	}
 
+	livingarcade_raster_command::clear(2, 0);
 	screen.priority().fill(0, cliprect);
 
 	m_bg_tilemap->draw(screen, bitmap, bg_clip, 0, 0);
@@ -660,5 +676,7 @@ uint32_t rallyx_state::screen_update_locomotn(screen_device &screen, bitmap_ind1
 	if (m_stars_enable)
 		draw_stars(bitmap, cliprect);
 
+	la_commands.finish(bitmap, screen.priority());
+	la_commands.capture_palette(bitmap, *m_palette);
 	return 0;
 }
