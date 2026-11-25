@@ -9,6 +9,7 @@
 ***************************************************************************/
 
 #include "emu.h"
+#include "livingarcade_raster_command.h"
 #include "video/resnet.h"
 #include "taitosj.h"
 
@@ -587,6 +588,8 @@ void taitosj_state::copy_layer(bitmap_ind16 &bitmap, const rectangle &cliprect, 
 			for (int i = 0; i < 32; i++)
 				scrolly[i]      = -m_colscrolly[32 * which + i] - m_scroll[2 * which + 1];
 
+		if (auto *la = livingarcade_raster_command::active)
+			la->column_layer(bitmap, m_layer_bitmap[which], cliprect, scrollx, scrolly, TRANSPARENT_PEN);
 		copyscrollbitmap_trans(bitmap, m_layer_bitmap[which], 1, &scrollx, 32, scrolly, cliprect, TRANSPARENT_PEN);
 
 		// store parts covered with sprites for sprites/layers collision detection
@@ -650,6 +653,7 @@ void taitosj_state::copy_layer(bitmap_ind16 &bitmap, const rectangle &cliprect, 
 void taitosj_state::copy_layers(bitmap_ind16 &bitmap, const rectangle &cliprect, copy_layer_func_t copy_layer_func, int *sprites_on, rectangle *sprite_areas)
 {
 	// fill the screen with the background color
+	livingarcade_raster_command::clear(1, 8 * (m_colorbank[1] & 0x07));
 	bitmap.fill(8 * (m_colorbank[1] & 0x07), cliprect);
 
 	for (int i = 0; i < 4; i++)
@@ -679,10 +683,10 @@ int taitosj_state::video_update_common(bitmap_ind16 &bitmap, const rectangle &cl
 	calculate_sprite_areas(sprites_on, sprite_areas);
 	set_pens();
 
-	draw_layers();
+	{ livingarcade_raster_command::suspend_scope la_pause; draw_layers(); }
 
 	copy_layers(bitmap, cliprect, copy_layer_func, sprites_on, sprite_areas);
-	check_collision(sprites_on, sprite_areas);
+	{ livingarcade_raster_command::suspend_scope la_pause; check_collision(sprites_on, sprite_areas); }
 
 	return 0;
 }
@@ -690,7 +694,12 @@ int taitosj_state::video_update_common(bitmap_ind16 &bitmap, const rectangle &cl
 
 uint32_t taitosj_state::screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
-	return video_update_common(bitmap, cliprect, &taitosj_state::copy_layer);
+	livingarcade_raster_command::scope la_commands(bitmap, screen.priority(), screen.frame_number(), cliprect);
+	la_commands.seed_priority(screen.priority());
+	const auto result = video_update_common(bitmap, cliprect, &taitosj_state::copy_layer);
+	la_commands.finish(bitmap, screen.priority());
+	la_commands.capture_palette(bitmap, *m_palette);
+	return result;
 }
 
 
