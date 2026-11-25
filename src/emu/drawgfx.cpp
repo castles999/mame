@@ -1176,7 +1176,7 @@ void gfx_element::prio_transtable(bitmap_ind16 &dest, const rectangle &cliprect,
 		bitmap_ind8 &priority, u32 pmask, const u8 *pentable)
 {
 	livingarcade_raster_probe::gfx_entry(&dest, true, false, false);
-	livingarcade_raster_command::unsupported();
+	livingarcade_raster_command::priority_modes_guard la_modes(*this, dest, priority, cliprect, code, color, flipx, flipy, destx, desty, 0x10000U, 0x10000U, pmask, pentable);
 	livingarcade_rgb_command::unsupported();
 	assert(pentable != nullptr);
 
@@ -1530,7 +1530,7 @@ void gfx_element::prio_zoom_transtable(bitmap_ind16 &dest, const rectangle &clip
 		const u8 *pentable)
 {
 	livingarcade_raster_probe::gfx_entry(&dest, true, true, false);
-	livingarcade_raster_command::unsupported();
+	livingarcade_raster_command::priority_modes_guard la_modes(*this, dest, priority, cliprect, code, color, flipx, flipy, destx, desty, scalex, scaley, pmask, pentable);
 	livingarcade_rgb_command::unsupported();
 	assert(pentable != nullptr);
 
