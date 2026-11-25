@@ -402,6 +402,66 @@ struct scope {
         const auto *src=gfx.get_data(code%gfx.elements());
         for(unsigned yy=0;yy<sh;++yy)for(unsigned xx=0;xx<sw;++xx)put(src[yy*gfx.rowbytes()+xx],1);
     }
+    // Tag 18: a 256x256 independent indexed layer, with global X and
+    // per-column Y scrolling. No priority writes during this copy.
+    template<class Dest,class Src,class Rect>
+    void column_layer(const Dest &dest,const Src &src,const Rect &clip,int sx,const int *sy,unsigned trans){
+        if(status)return;
+        if(&dest!=target||src.width()!=256||src.height()!=256||trans>65535||
+           !bounds(clip.left(),clip.top(),clip.right()+1,clip.bottom()+1)){status|=8;return;}
+        if(!room(17+4+128+2+131072))return;
+        put(18,1);rect(clip.left(),clip.top(),clip.right()+1,clip.bottom()+1);
+        put(u32(sx),4);for(int i=0;i<32;++i)put(u32(sy[i]),4);put(trans,2);
+        for(int y=0;y<256;++y)for(int x=0;x<256;++x)put(src.pix(y,x),2);
+    }
+    // Tag 19: prioritized sprite with a full transparent-pen mask.
+    template<class Gfx,class Dest,class Pri,class Rect>
+    void masked_sprite(Gfx &gfx,const Dest &dest,const Pri &pri,const Rect &clip,
+                       u32 code,u32 color,int fx,int fy,int x,int y,u32 pmask,u32 transmask){
+        if(status)return;
+        if(&pri!=priority){status|=8;return;}
+        // Reuse the source sprite envelope. Tag 19 appends a second mask.
+        const auto before=payload.size();
+        plain_sprite(gfx,dest,clip,code,color,fx,fy,x,y,pmask,19,0);
+        if(status||payload.size()==before)return;
+        if(payload.size()>max_payload-4){status|=2;return;}
+        put(transmask,4);
+    }
+    // Tag 21 snapshots the actual indexed shadow lookup. Tag 20 uses the
+    // ordinary sprite geometry and a mask of shadow-producing source pens.
+    const void *shadow_identity=nullptr;
+    template<class Gfx,class Dest,class Rect>
+    void shadow_sprite(Gfx &gfx,const Dest &dest,const Rect &clip,u32 code,u32 color,
+                       int fx,int fy,int x,int y,const u8 *modes,unsigned none,unsigned shadow){
+        if(status)return;
+        const auto *table=gfx.palette().shadow_table();
+        if(!table||!modes||gfx.granularity()>32||!gfx.granularity()){status|=8;return;}
+        u32 mask=0;
+        for(unsigned i=0;i<gfx.granularity();++i){
+            if(modes[i]==shadow)mask|=u32(1)<<i;
+            else if(modes[i]!=none){status|=8;return;}
+        }
+        if(!shadow_identity){
+            if(!room(1+131072))return;
+            shadow_identity=table;put(21,1);
+            for(unsigned i=0;i<65536;++i){if(table[i]>65535)status|=8;put(table[i],2);}
+        }else if(shadow_identity!=table){status|=8;return;}
+        plain_sprite(gfx,dest,clip,code,color,fx,fy,x,y,mask,20,0);
+    }
+    // Tags 22/23: generated stars with a destination-pen predicate.
+    bool star_initialized=false;
+    template<class Dest,class Palette>
+    void conditional_star(const Dest &dest,int x,int y,unsigned pen,const Palette &palette){
+        if(status)return;
+        if(&dest!=target||!bounds(x,y,x+1,y+1)||pen>65535){status|=8;return;}
+        if(!star_initialized){
+            if(!room(325))return;
+            put(23,1);for(unsigned i=0;i<0x144;++i)put(palette.pen_indirect(i)==0?1:0,1);
+            star_initialized=true;
+        }
+        if(!room(11))return;
+        put(22,1);put(x,4);put(y,4);put(pen,2);
+    }
     // Optional companion stream, correlated one-to-one with committed UPD1 records.
     // This samples the effective adjusted palette at callback completion, NOT final
     // OSD scanout. Palette changes between callbacks remain a separate gate.
@@ -454,6 +514,20 @@ struct sprite_guard {
     }
     ~sprite_guard(){if(s)--s->sprite_depth;}
     sprite_guard(const sprite_guard&)=delete;
+};
+struct masked_sprite_guard {
+    scope *s=active;
+    template<class... Args> explicit masked_sprite_guard(Args&&...args){
+        if(s){if(!s->sprite_depth)s->masked_sprite(args...);++s->sprite_depth;}
+    }
+    ~masked_sprite_guard(){if(s)--s->sprite_depth;}
+    masked_sprite_guard(const masked_sprite_guard&)=delete;
+};
+struct suspend_scope {
+    scope *saved=active;
+    suspend_scope(){active=nullptr;}
+    ~suspend_scope(){active=saved;}
+    suspend_scope(const suspend_scope&)=delete;
 };
 struct plain_sprite_guard {
     scope *s=active;
