@@ -901,7 +901,7 @@ u32 cv1k_blitter_device::screen_update(screen_device &screen, bitmap_rgb32 &bitm
 	{
 		const int scroll_x = -m_gfx_scroll_x;
 		const int scroll_y = -m_gfx_scroll_y;
-		livingarcade_cv1k_trace::view(screen.frame_number(), cliprect, scroll_x, scroll_y);
+		livingarcade_cv1k_trace::view(screen.frame_number(), bitmap.width(), bitmap.height(), cliprect, scroll_x, scroll_y);
 
 		copyscrollbitmap(bitmap, m_bitmaps, 1, &scroll_x, 1, &scroll_y, cliprect);
 	}
