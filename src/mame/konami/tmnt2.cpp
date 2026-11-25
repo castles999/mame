@@ -56,6 +56,7 @@ Uncertain bugs:
 ***************************************************************************/
 
 #include "emu.h"
+#include "livingarcade_raster_command.h"
 
 #include "k051960.h"
 #include "k052109.h"
@@ -1057,6 +1058,7 @@ uint16_t prmrsocr_state::prmrsocr_rom_r(offs_t offset)
 
 uint32_t punkshot_state::screen_update_punkshot(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
+	livingarcade_raster_command::scope la_commands(bitmap, screen.priority(), screen.frame_number(), cliprect);
 	// update color info and refresh tilemaps
 	static const int K053251_CI[3] = { k053251_device::CI2, k053251_device::CI4, k053251_device::CI3 };
 	m_sprite_colorbase = m_k053251->get_palette_index(k053251_device::CI1);
@@ -1080,18 +1082,23 @@ uint32_t punkshot_state::screen_update_punkshot(screen_device &screen, bitmap_in
 
 	konami_sortlayers3(layer, m_layerpri);
 
+	la_commands.undefined_color();
+	livingarcade_raster_command::clear(2, 0);
 	screen.priority().fill(0, cliprect);
 	m_k052109->tilemap_draw(screen, bitmap, cliprect, layer[0], TILEMAP_DRAW_OPAQUE, 1);
 	m_k052109->tilemap_draw(screen, bitmap, cliprect, layer[1], 0, 2);
 	m_k052109->tilemap_draw(screen, bitmap, cliprect, layer[2], 0, 4);
 
 	m_k051960->k051960_sprites_draw(bitmap, cliprect, screen.priority(), -1, -1);
+	la_commands.finish(bitmap, screen.priority());
+	la_commands.capture_palette(bitmap, *m_palette);
 	return 0;
 }
 
 
 uint32_t lgtnfght_state::screen_update_lgtnfght(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
+	livingarcade_raster_command::scope la_commands(bitmap, screen.priority(), screen.frame_number(), cliprect);
 	// update color info and refresh tilemaps
 	static const int K053251_CI[3] = { k053251_device::CI2, k053251_device::CI4, k053251_device::CI3 };
 	const int bg_colorbase = m_k053251->get_palette_index(k053251_device::CI0);
@@ -1116,13 +1123,17 @@ uint32_t lgtnfght_state::screen_update_lgtnfght(screen_device &screen, bitmap_in
 
 	konami_sortlayers3(layer, m_layerpri);
 
+	livingarcade_raster_command::clear(2, 0);
 	screen.priority().fill(0, cliprect);
+	livingarcade_raster_command::clear(1, 16 * bg_colorbase);
 	bitmap.fill(16 * bg_colorbase, cliprect);
 	m_k052109->tilemap_draw(screen, bitmap, cliprect, layer[0], 0, 1);
 	m_k052109->tilemap_draw(screen, bitmap, cliprect, layer[1], 0, 2);
 	m_k052109->tilemap_draw(screen, bitmap, cliprect, layer[2], 0, 4);
 
 	m_k053245->sprites_draw(bitmap, cliprect, screen.priority());
+	la_commands.finish(bitmap, screen.priority());
+	la_commands.capture_palette(bitmap, *m_palette);
 	return 0;
 }
 
@@ -1199,6 +1210,7 @@ uint32_t tmnt2_roz_base_state::screen_update(screen_device &screen, bitmap_ind16
 
 uint32_t ssriders_state::screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
+	livingarcade_raster_command::scope la_commands(bitmap, screen.priority(), screen.frame_number(), cliprect);
 	// toggle shadow/highlight
 	m_palette->set_shadow_mode(BIT(~m_dim_c, 4));
 
@@ -1255,6 +1267,8 @@ uint32_t ssriders_state::screen_update(screen_device &screen, bitmap_ind16 &bitm
 		}
 	}
 
+	la_commands.finish(bitmap, screen.priority());
+	la_commands.capture_palette(bitmap, *m_palette);
 	return 0;
 }
 
