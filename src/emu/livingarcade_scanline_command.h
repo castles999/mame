@@ -16,10 +16,11 @@ inline writer &frame_output(){
     static writer w("LIVINGARCADE_NEOGEO_PRESENT","LANF0001");
     return w;
 }
+inline writer &secondary_frame_output(){static writer w("LIVINGARCADE_NEOGEO_PRESENT_SECONDARY","LANF0001");return w;}
 // Complete RGB texture-source witness, independent of scanline commands.
 template<class Bitmap,class Rect>
-inline void frame_witness(const Bitmap &dest,u64 frame,const Rect &clip){
-    auto &o=frame_output();
+inline void frame_witness(const Bitmap &dest,u64 frame,const Rect &clip,writer *selected=nullptr){
+    auto &o=selected?*selected:frame_output();
     if(!o.f||o.failed||o.capped)return;
     if(o.count>=max_updates){o.capped=true;return;}
     const int w=dest.width(),h=dest.height(),l=clip.left(),t=clip.top(),r=clip.right()+1,b=clip.bottom()+1;
