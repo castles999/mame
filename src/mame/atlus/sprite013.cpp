@@ -123,6 +123,7 @@ TODO:
 */
 
 #include "emu.h"
+#include "livingarcade_rgb_command.h"
 #include "sprite013.h"
 
 DEFINE_DEVICE_TYPE(SPRITE013, sprite013_device, "sprite013", "013 Sprite generator")
@@ -570,6 +571,8 @@ void sprite013_device::draw(screen_device &screen, bitmap_rgb32 &bitmap, const r
 	for (int y = clip.min_y; y <= clip.max_y; y++)
 	{
 		u16 const *const srcbitmap = &m_sprite_bitmap.pix(y);
+		if (auto *la = livingarcade_rgb_command::current)
+			la->cave_sprite_row(bitmap, y, clip.min_x, clip.max_x+1, srcbitmap, palette, gfx(0)->colors(), gfx(0)->granularity());
 		u32 *const dstbitmap = &bitmap.pix(y);
 		u8 *const dstprimap = &screen.priority().pix(y);
 		for (int x = clip.min_x; x <= clip.max_x; x++)
