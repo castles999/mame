@@ -127,16 +127,34 @@ struct scope {
         put(7,1);rect(start,y,end,y+1);put(zero,4);put(background,4);
         for(unsigned i=0;i<4;++i){if(blend[i]>8)status|=8;put(blend[i],1);}
     }
+    // Tag 10: run-coded candidate samples. Each 16-bit run token has
+    // length in bits 0..13, blend select in bit 14, coverage in bit 15.
+    // Covered runs carry one RGB32 source color. Transparent runs carry none.
+    // Worst case is six bytes per pixel, as in legacy tag 8.
+    unsigned mixer_remaining=0, mixer_run=0, mixer_select=0;
+    bool mixer_selected=false;
+    u32 mixer_color=0;
     bool mixer_layer(int y,int start,int end,unsigned pri,unsigned mode,unsigned layer){
         if(status)return false;
-        if(!bounds(start,y,end,y+1)||pri>255||mode>3||layer>8){status|=8;return false;}
+        if(mixer_remaining||mixer_run||!bounds(start,y,end,y+1)||pri>255||mode>3||layer>8){status|=8;return false;}
         if(!room(20+6*u64(end-start)))return false;
-        put(8,1);rect(start,y,end,y+1);put(pri,1);put(mode,1);put(layer,1);
+        put(10,1);rect(start,y,end,y+1);put(pri,1);put(mode,1);put(layer,1);
+        mixer_remaining=end-start;
         return true;
     }
+    void mixer_flush(){
+        if(!mixer_run)return;
+        put(mixer_run|(mixer_select<<14)|(mixer_selected?0x8000:0),2);
+        if(mixer_selected)put(mixer_color,4);
+        mixer_run=0;
+    }
     void mixer_sample(bool selected,unsigned select,u32 color){
-        if(select>1)status|=8;
-        put(selected?1:0,1);put(select,1);put(color,4);
+        if(status)return;
+        if(!mixer_remaining||select>1||(!selected&&(select||color))){status|=8;return;}
+        if(mixer_run&&(selected!=mixer_selected||select!=mixer_select||color!=mixer_color))mixer_flush();
+        mixer_selected=selected;mixer_select=select;mixer_color=color;
+        ++mixer_run;
+        if(!--mixer_remaining)mixer_flush();
     }
     template<class Dest>
     void mixer_end(const Dest &dest,int y,int start,int end){
@@ -144,6 +162,7 @@ struct scope {
         if(&dest!=target||y<t||y>=b){status|=4;return;}
         start=std::max(start,l);end=std::min(end,r);
         if(start>=end)return;
+        if(mixer_remaining||mixer_run){status|=8;return;}
         if(!room(17))return;
         put(9,1);rect(start,y,end,y+1);
     }
