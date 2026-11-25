@@ -247,6 +247,12 @@ struct scope {
         put(14,1);rect(l,y,r,y+1);
         for(int x=first;x<last;++x)put(source[x*256],1);
     }
+    void cave_begin(){
+        if(!out||status)return;
+        if(ops||cave_priority){status|=8;return;}
+        if(!room(1))return;
+        cave_priority=true;put(17,1);
+    }
     // Tag 16: source sprite bitmap before the standard Cave priority
     // callback. Zoom/sprite-list generation remains lowered by sprite013.
     template<class Dest,class Source,class Color>
