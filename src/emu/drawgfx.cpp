@@ -554,7 +554,7 @@ void gfx_element::transtable(bitmap_ind16 &dest, const rectangle &cliprect,
 {
 	livingarcade_raster_probe::gfx_entry(&dest, false, false, false);
 	if (auto *la = livingarcade_raster_command::active)
-		la->shadow_sprite(*this, dest, cliprect, code, color, flipx, flipy, destx, desty, pentable, DRAWMODE_NONE, DRAWMODE_SHADOW);
+		la->shadow_sprite(*this, dest, cliprect, code, color, flipx, flipy, destx, desty, pentable, DRAWMODE_NONE, DRAWMODE_SHADOW, DRAWMODE_SOURCE);
 	livingarcade_rgb_command::unsupported();
 	assert(pentable != nullptr);
 
