@@ -299,6 +299,7 @@ Playfield tile info:
 
 #include "emu.h"
 #include "livingarcade_rgb_command.h"
+#include <type_traits>
 #include "taito_f3.h"
 
 #include <algorithm>
@@ -1004,7 +1005,10 @@ bool taito_f3_state::mix_line(const Mix &gfx, mix_pix &z, pri_mode &pri, const f
 	{
 		const int start = std::max<int>(std::max<int>(range.l, H_START), la->l);
 		const int end = std::min<int>(std::min<int>(range.r, H_START + H_VIS), la->r);
-		if (start < end && la->mixer_layer(line.y, start, end, gfx.prio, gfx.blend_mode))
+		unsigned layer_id = 0;
+		if constexpr (std::is_same_v<Mix, sprite_inf>) layer_id = 1 + gfx.index;
+		else if constexpr (std::is_same_v<Mix, playfield_inf>) layer_id = 5 + gfx.index;
+		if (start < end && la->mixer_layer(line.y, start, end, gfx.prio, gfx.blend_mode, layer_id))
 		{
 			const auto *clut = m_palette->pens();
 			for (int x = start; x < end; ++x)
