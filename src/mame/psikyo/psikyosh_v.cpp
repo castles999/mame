@@ -117,6 +117,7 @@ TODO:
 */
 
 #include "emu.h"
+#include "livingarcade_rgb_command.h"
 #include "psikyosh.h"
 
 #include "input.h" // for video debug keys
@@ -271,10 +272,18 @@ void psikyosh_state::draw_single_tilemap(u8 const layer, bitmap_rgb32 &bitmap, c
 			u16 const *const srcbitmap = &tmap->pixmap().pix(srcy & 0xff);
 			u8 const *const srcflagsmap = &tmap->flagsmap().pix(srcy & 0xff);
 
+			auto *la = livingarcade_rgb_command::current;
+			const bool la_row = la && la->psikyo_row(bitmap, cliprect.left(), scanline, cliprect.right()+1, 0, false);
 			for (int drawx = cliprect.left(), xcnt = m_bg_zoom[zoom] * cliprect.left(); drawx <= cliprect.right(); drawx++, xcnt += m_bg_zoom[zoom])
 			{
 				u16 const srcx = ((xcnt >> 10) - scrollx) & 0x1ff;
 				u8 const pix = srcbitmap[srcx] & 0xff;
+				if (la_row)
+				{
+					const unsigned level = alphamap ? m_alphatable[pix] : alpha;
+					const u32 color = pix ? pal[(pix + ((srcbitmap[srcx] & 0xf00) | ((srcflagsmap[srcx] & 0xf) << 4))) & 0xfff] : 0;
+					la->psikyo_sample(pix && level ? (level == 255 ? 1 : 2) : 0, level, color);
+				}
 				if (pix != 0)
 				{
 					u32 const color = pal[(pix + ((srcbitmap[srcx] & 0xf00) | ((srcflagsmap[srcx] & 0xf) << 4))) & 0xfff];
@@ -439,6 +448,9 @@ void psikyosh_state::drawgfxzoom(bitmap_rgb32 &dest_bmp, const rectangle &clip, 
 
 								for (int y = sy; y < ey; y++)
 								{
+									if (auto *la = livingarcade_rgb_command::current)
+										la->psikyo_sprite_row(dest_bmp, sx, y, ex, z, pal, alpha, m_alphatable.get(),
+											[&](int i) { return source[i*xinc]; });
 									for (int x = sx; x < ex; x++)
 									{
 										pixop_transparent_priority(*source, dest, pri, pal, z);
@@ -460,6 +472,9 @@ void psikyosh_state::drawgfxzoom(bitmap_rgb32 &dest_bmp, const rectangle &clip, 
 
 								for (int y = sy; y < ey; y++)
 								{
+									if (auto *la = livingarcade_rgb_command::current)
+										la->psikyo_sprite_row(dest_bmp, sx, y, ex, z, pal, alpha, m_alphatable.get(),
+											[&](int i) { return source[i*xinc]; });
 									for (int x = sx; x < ex; x++)
 									{
 										pixop_transparent(*source, dest, pal);
@@ -486,6 +501,9 @@ void psikyosh_state::drawgfxzoom(bitmap_rgb32 &dest_bmp, const rectangle &clip, 
 
 								for (int y = sy; y < ey; y++)
 								{
+									if (auto *la = livingarcade_rgb_command::current)
+										la->psikyo_sprite_row(dest_bmp, sx, y, ex, z, pal, alpha, m_alphatable.get(),
+											[&](int i) { return source[i*xinc]; });
 									for (int x = sx; x < ex; x++)
 									{
 										pixop_transparent_alpha_priority(*source, dest, pri, pal, z, alpha);
@@ -507,6 +525,9 @@ void psikyosh_state::drawgfxzoom(bitmap_rgb32 &dest_bmp, const rectangle &clip, 
 
 								for (int y = sy; y < ey; y++)
 								{
+									if (auto *la = livingarcade_rgb_command::current)
+										la->psikyo_sprite_row(dest_bmp, sx, y, ex, z, pal, alpha, m_alphatable.get(),
+											[&](int i) { return source[i*xinc]; });
 									for (int x = sx; x < ex; x++)
 									{
 										pixop_transparent_alpha(*source, dest, pal, alpha);
@@ -533,6 +554,9 @@ void psikyosh_state::drawgfxzoom(bitmap_rgb32 &dest_bmp, const rectangle &clip, 
 
 								for (int y = sy; y < ey; y++)
 								{
+									if (auto *la = livingarcade_rgb_command::current)
+										la->psikyo_sprite_row(dest_bmp, sx, y, ex, z, pal, alpha, m_alphatable.get(),
+											[&](int i) { return source[i*xinc]; });
 									for (int x = sx; x < ex; x++)
 									{
 										pixop_transparent_alphatable_priority(*source, dest, pri, pal, z, m_alphatable.get());
@@ -554,6 +578,9 @@ void psikyosh_state::drawgfxzoom(bitmap_rgb32 &dest_bmp, const rectangle &clip, 
 
 								for (int y = sy; y < ey; y++)
 								{
+									if (auto *la = livingarcade_rgb_command::current)
+										la->psikyo_sprite_row(dest_bmp, sx, y, ex, z, pal, alpha, m_alphatable.get(),
+											[&](int i) { return source[i*xinc]; });
 									for (int x = sx; x < ex; x++)
 									{
 										pixop_transparent_alphatable(*source, dest, pal, m_alphatable.get());
@@ -665,6 +692,9 @@ void psikyosh_state::drawgfxzoom(bitmap_rgb32 &dest_bmp, const rectangle &clip, 
 								u16 *pri = &m_z_bitmap.pix(y);
 
 								int x_index = x_index_base;
+								if (auto *la = livingarcade_rgb_command::current)
+									la->psikyo_sprite_row(dest_bmp, sx, y, ex, z, pal, alpha, m_alphatable.get(),
+										[&](int i) { return source[(x_index+i*dx)>>10]; });
 								for (int x = sx; x < ex; x++)
 								{
 									pixop_transparent_priority(source[x_index >> 10], &dest[x], &pri[x], pal, z);
@@ -682,6 +712,9 @@ void psikyosh_state::drawgfxzoom(bitmap_rgb32 &dest_bmp, const rectangle &clip, 
 								u32 *dest = &dest_bmp.pix(y);
 
 								int x_index = x_index_base;
+								if (auto *la = livingarcade_rgb_command::current)
+									la->psikyo_sprite_row(dest_bmp, sx, y, ex, z, pal, alpha, m_alphatable.get(),
+										[&](int i) { return source[(x_index+i*dx)>>10]; });
 								for (int x = sx; x < ex; x++)
 								{
 									pixop_transparent(source[x_index >> 10], &dest[x], pal);
@@ -705,6 +738,9 @@ void psikyosh_state::drawgfxzoom(bitmap_rgb32 &dest_bmp, const rectangle &clip, 
 								u16 *pri = &m_z_bitmap.pix(y);
 
 								int x_index = x_index_base;
+								if (auto *la = livingarcade_rgb_command::current)
+									la->psikyo_sprite_row(dest_bmp, sx, y, ex, z, pal, alpha, m_alphatable.get(),
+										[&](int i) { return source[(x_index+i*dx)>>10]; });
 								for (int x = sx; x < ex; x++)
 								{
 									pixop_transparent_alpha_priority(source[x_index >> 10], &dest[x], &pri[x], pal, z, alpha);
@@ -722,6 +758,9 @@ void psikyosh_state::drawgfxzoom(bitmap_rgb32 &dest_bmp, const rectangle &clip, 
 								u32 *dest = &dest_bmp.pix(y);
 
 								int x_index = x_index_base;
+								if (auto *la = livingarcade_rgb_command::current)
+									la->psikyo_sprite_row(dest_bmp, sx, y, ex, z, pal, alpha, m_alphatable.get(),
+										[&](int i) { return source[(x_index+i*dx)>>10]; });
 								for (int x = sx; x < ex; x++)
 								{
 									pixop_transparent_alpha(source[x_index >> 10], &dest[x], pal, alpha);
@@ -745,6 +784,9 @@ void psikyosh_state::drawgfxzoom(bitmap_rgb32 &dest_bmp, const rectangle &clip, 
 								u16 *pri = &m_z_bitmap.pix(y);
 
 								int x_index = x_index_base;
+								if (auto *la = livingarcade_rgb_command::current)
+									la->psikyo_sprite_row(dest_bmp, sx, y, ex, z, pal, alpha, m_alphatable.get(),
+										[&](int i) { return source[(x_index+i*dx)>>10]; });
 								for (int x = sx; x < ex; x++)
 								{
 									pixop_transparent_alphatable_priority(source[x_index >> 10], &dest[x], &pri[x], pal, z, m_alphatable.get());
@@ -762,6 +804,9 @@ void psikyosh_state::drawgfxzoom(bitmap_rgb32 &dest_bmp, const rectangle &clip, 
 								u32 *dest = &dest_bmp.pix(y);
 
 								int x_index = x_index_base;
+								if (auto *la = livingarcade_rgb_command::current)
+									la->psikyo_sprite_row(dest_bmp, sx, y, ex, z, pal, alpha, m_alphatable.get(),
+										[&](int i) { return source[(x_index+i*dx)>>10]; });
 								for (int x = sx; x < ex; x++)
 								{
 									pixop_transparent_alphatable(source[x_index >> 10], &dest[x], pal, m_alphatable.get());
@@ -929,7 +974,7 @@ void psikyosh_state::prelineblend(bitmap_rgb32 &bitmap, const rectangle &cliprec
 	u8 const bank = (m_vidregs[7] & 0xff000000) >> 24;
 	if (bank > 0x1f) // avoid possible oob access
 	{
-		bitmap.fill(m_palette->black_pen(), cliprect);
+		livingarcade_rgb_command::fill(bitmap, m_palette->black_pen(), cliprect);
 		return;
 	}
 
@@ -941,6 +986,8 @@ void psikyosh_state::prelineblend(bitmap_rgb32 &bitmap, const rectangle &cliprec
 	{
 		u32 *const dstline = &bitmap.pix(y);
 
+		if (auto *la = livingarcade_rgb_command::current)
+			la->fill(bitmap, rectangle(cliprect.left(), cliprect.right(), y, y), linefill[y] >> 8);
 		/* linefill[y] & 0xff does what? */
 		for (int x = cliprect.left(); x <= cliprect.right(); x++)
 			dstline[x] = linefill[y] >> 8;
@@ -969,6 +1016,10 @@ void psikyosh_state::postlineblend(bitmap_rgb32 &bitmap, const rectangle &clipre
 	{
 		u32 *const dstline = &bitmap.pix(y);
 		u32 const color = lineblend[y];
+		if (auto *la = livingarcade_rgb_command::current)
+			if ((color & 0xff) && la->psikyo_row(bitmap, cliprect.left(), y, cliprect.right()+1, 0, false))
+				for (int x = cliprect.left(); x <= cliprect.right(); ++x)
+					la->psikyo_sample(BIT(color,7)?1:2, (color&0x7f)<<1, color>>8);
 
 		if (BIT(color, 7)) /* solid */
 		{
@@ -1039,6 +1090,8 @@ void psikyosh_state::video_start()
 
 u32 psikyosh_state::screen_update(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect)/* Note the z-buffer on each sprite to get correct priority */
 {
+	livingarcade_rgb_command::scope la_rgb(bitmap, screen.frame_number(), cliprect);
+	la_rgb.psikyo_begin();
 	// show only the priority associated with a given keypress(s) and/or hide sprites/tilemaps
 	bool pri_debug = false;
 	bool sprites = true;
@@ -1085,6 +1138,7 @@ popmessage   ("%08x %08x %08x %08x\n%08x %08x %08x %08x",
 			postlineblend(bitmap, cliprect, i);
 		}
 	}
+	la_rgb.finish(bitmap);
 	return 0;
 }
 
