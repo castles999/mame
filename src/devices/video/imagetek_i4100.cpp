@@ -70,6 +70,7 @@
 **************************************************************************************************/
 
 #include "emu.h"
+#include "livingarcade_rgb_command.h"
 #include "imagetek_i4100.h"
 
 #include <algorithm>
@@ -1120,9 +1121,12 @@ void imagetek_i4100_device::draw_spritegfx(screen_device &screen, bitmap_rgb32 &
 					u32 *dest = &bitmap.pix(y);
 					u8 *pri = &priority_bitmap.pix(y);
 					int x_index = x_index_base;
+					auto *la = livingarcade_rgb_command::current;
+					const bool la_row = la && la->metro_row(bitmap, sx, y, ex, prival, true);
 					for (int x = sx; x < ex; x++)
 					{
 						const u8 c = source[x_index >> 16];
+						if (la_row) la->metro_sample(c != trans, c != trans ? pal[color + c] : 0);
 
 						if (c != trans)
 						{
@@ -1396,6 +1400,8 @@ void imagetek_i4100_device::draw_tilemap(screen_device &screen, bitmap_rgb32 &bi
 
 		u32 *dst = &bitmap.pix(y);
 		u8 *priority_baseaddr = &priority_bitmap.pix(y);
+		auto *la = livingarcade_rgb_command::current;
+		const bool la_row = la && la->metro_row(bitmap, cliprect.min_x, y, cliprect.max_x+1, pcode, false);
 
 		for (int x = cliprect.min_x; x <= cliprect.max_x; x++)
 		{
@@ -1410,6 +1416,7 @@ void imagetek_i4100_device::draw_tilemap(screen_device &screen, bitmap_rgb32 &bi
 
 			u16 const tile = m_vram[layer][tileoffs];
 			u8 const draw = get_tile_pix(tile, srccol, srcline, big, dat);
+			if (la_row) la->metro_sample(draw != 0, dat);
 
 			if (draw)
 			{
@@ -1455,9 +1462,12 @@ void imagetek_i4100_device::draw_foreground(screen_device &screen, bitmap_rgb32 
 
 u32 imagetek_i4100_device::screen_update(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect)
 {
-	bitmap.fill(m_palette->pen(m_background_color), cliprect);
+	livingarcade_rgb_command::scope la_rgb(bitmap, screen.frame_number(), cliprect);
+	la_rgb.metro_begin();
+	livingarcade_rgb_command::fill(bitmap, m_palette->pen(m_background_color), cliprect);
 
 	draw_foreground(screen, bitmap, cliprect);
+	la_rgb.finish(bitmap);
 
 	return 0;
 }
