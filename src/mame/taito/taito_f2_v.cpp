@@ -1,6 +1,7 @@
 // license:BSD-3-Clause
 // copyright-holders:David Graves, Bryan McPhail, Brad Oliver, Andrew Prime, Brian Troha, Nicola Salmoria
 #include "emu.h"
+#include "livingarcade_raster_command.h"
 #include "taito_f2.h"
 #include "screen.h"
 
@@ -282,6 +283,11 @@ void taitof2_state::taito_f2_tc360_spritemixdraw(screen_device &screen, bitmap_i
 
 	if (!scalex || !scaley)
 		return;
+
+	if (auto *la = livingarcade_raster_command::active)
+		la->f2_sprite(*gfx, dest_bmp, priority_bitmap, clip, code, color, flipx, flipy, sx, sy,
+			sprite_screen_width, sprite_screen_height, use_mixer, primask, m_tilepri,
+			use_mixer ? m_spritepri[primask & 3] : 0, use_mixer ? m_spriteblendmode : 0);
 
 	if (sprite_screen_width && sprite_screen_height)
 	{
@@ -990,6 +996,7 @@ u32 taitof2_state::screen_update(screen_device &screen, bitmap_ind16 &bitmap, co
 
 u32 taitof2_state::screen_update_pri(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
+	livingarcade_raster_command::scope la_commands(bitmap, screen.priority(), screen.frame_number(), cliprect);
 	int layer[3];
 
 	handle_sprite_buffering();
@@ -1010,7 +1017,9 @@ u32 taitof2_state::screen_update_pri(screen_device &screen, bitmap_ind16 &bitmap
 
 	m_spriteblendmode = m_tc0360pri->read(0) & 0xc0;
 
+	livingarcade_raster_command::clear(2, 0);
 	screen.priority().fill(0, cliprect);
+	livingarcade_raster_command::clear(1, 0);
 	bitmap.fill(0, cliprect);   /* wrong color? */
 
 	m_tc0100scn[0]->tilemap_draw(screen, bitmap, cliprect, layer[0], 0, 1);
@@ -1018,6 +1027,8 @@ u32 taitof2_state::screen_update_pri(screen_device &screen, bitmap_ind16 &bitmap
 	m_tc0100scn[0]->tilemap_draw(screen, bitmap, cliprect, layer[2], 0, 4);
 
 	draw_sprites(screen, bitmap, cliprect, nullptr, 1);
+	la_commands.finish(bitmap, screen.priority());
+	if (screen.has_palette()) la_commands.capture_palette(bitmap, screen.palette());
 	return 0;
 }
 
@@ -1034,6 +1045,7 @@ void dondokod_state::draw_roz_layer(screen_device &screen, bitmap_ind16 &bitmap,
 
 u32 dondokod_state::screen_update_pri_roz(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
+	livingarcade_raster_command::scope la_commands(bitmap, screen.priority(), screen.frame_number(), cliprect);
 	int tilepri[3];
 	int layer[3];
 	const u16 roz_base_color = (m_tc0360pri->read(1) & 0x3f) << 2;
@@ -1066,7 +1078,9 @@ u32 dondokod_state::screen_update_pri_roz(screen_device &screen, bitmap_ind16 &b
 
 	m_spriteblendmode = m_tc0360pri->read(0) & 0xc0;
 
+	livingarcade_raster_command::clear(2, 0);
 	screen.priority().fill(0, cliprect);
+	livingarcade_raster_command::clear(1, 0);
 	bitmap.fill(0, cliprect);   /* wrong color? */
 
 	int drawn = 0;
@@ -1091,6 +1105,8 @@ u32 dondokod_state::screen_update_pri_roz(screen_device &screen, bitmap_ind16 &b
 	}
 
 	draw_sprites(screen, bitmap, cliprect, nullptr, 1);
+	la_commands.finish(bitmap, screen.priority());
+	if (screen.has_palette()) la_commands.capture_palette(bitmap, screen.palette());
 	return 0;
 }
 
@@ -1098,6 +1114,7 @@ u32 dondokod_state::screen_update_pri_roz(screen_device &screen, bitmap_ind16 &b
 /* Thunderfox */
 u32 taitof2_state::screen_update_thundfox(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
+	livingarcade_raster_command::scope la_commands(bitmap, screen.priority(), screen.frame_number(), cliprect);
 	int tilepri[2][3];
 	int spritepri[4];
 	int layer[2][3];
@@ -1127,7 +1144,9 @@ u32 taitof2_state::screen_update_thundfox(screen_device &screen, bitmap_ind16 &b
 	spritepri[2] = m_tc0360pri->read(7) & 0x0f;
 	spritepri[3] = m_tc0360pri->read(7) >> 4;
 
+	livingarcade_raster_command::clear(2, 0);
 	screen.priority().fill(0, cliprect);
+	livingarcade_raster_command::clear(1, 0);
 	bitmap.fill(0, cliprect);   /* wrong color? */
 
 	drawn[0] = drawn[1] = 0;
@@ -1171,6 +1190,8 @@ u32 taitof2_state::screen_update_thundfox(screen_device &screen, bitmap_ind16 &b
 	}
 
 	draw_sprites(screen, bitmap, cliprect, primasks, 0);
+	la_commands.finish(bitmap, screen.priority());
+	if (screen.has_palette()) la_commands.capture_palette(bitmap, screen.palette());
 	return 0;
 }
 
@@ -1205,6 +1226,7 @@ and it changes these (and the sprite pri settings) a lot.
 
 u32 footchmp_state::screen_update_metalb(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
+	livingarcade_raster_command::scope la_commands(bitmap, screen.priority(), screen.frame_number(), cliprect);
 	u8 layer[5], invlayer[4];
 
 	handle_sprite_buffering();
@@ -1237,7 +1259,9 @@ u32 footchmp_state::screen_update_metalb(screen_device &screen, bitmap_ind16 &bi
 
 	m_spriteblendmode = m_tc0360pri->read(0) & 0xc0;
 
+	livingarcade_raster_command::clear(2, 0);
 	screen.priority().fill(0, cliprect);
+	livingarcade_raster_command::clear(1, 0);
 	bitmap.fill(0, cliprect);
 
 	m_tc0480scp->tilemap_draw(screen, bitmap, cliprect, layer[0], 0, 1);
@@ -1247,6 +1271,8 @@ u32 footchmp_state::screen_update_metalb(screen_device &screen, bitmap_ind16 &bi
 	m_tc0480scp->tilemap_draw(screen, bitmap, cliprect, layer[4], 0, 16);
 
 	draw_sprites(screen, bitmap, cliprect, nullptr, 1);
+	la_commands.finish(bitmap, screen.priority());
+	if (screen.has_palette()) la_commands.capture_palette(bitmap, screen.palette());
 	return 0;
 }
 
@@ -1254,6 +1280,7 @@ u32 footchmp_state::screen_update_metalb(screen_device &screen, bitmap_ind16 &bi
 /* Deadconx, Footchmp */
 u32 footchmp_state::screen_update_deadconx(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
+	livingarcade_raster_command::scope la_commands(bitmap, screen.priority(), screen.frame_number(), cliprect);
 	u8 layer[5];
 	u8 tilepri[5];
 	u8 spritepri[4];
@@ -1281,7 +1308,9 @@ u32 footchmp_state::screen_update_deadconx(screen_device &screen, bitmap_ind16 &
 	spritepri[2] = m_tc0360pri->read(7) & 0x0f;
 	spritepri[3] = m_tc0360pri->read(7) >> 4;
 
+	livingarcade_raster_command::clear(2, 0);
 	screen.priority().fill(0, cliprect);
+	livingarcade_raster_command::clear(1, 0);
 	bitmap.fill(0, cliprect);
 
 	m_tc0480scp->tilemap_draw(screen, bitmap, cliprect, layer[0], 0, 1);
@@ -1302,5 +1331,7 @@ u32 footchmp_state::screen_update_deadconx(screen_device &screen, bitmap_ind16 &
 	}
 
 	draw_sprites(screen, bitmap, cliprect, primasks, 0);
+	la_commands.finish(bitmap, screen.priority());
+	if (screen.has_palette()) la_commands.capture_palette(bitmap, screen.palette());
 	return 0;
 }
