@@ -298,6 +298,7 @@ Playfield tile info:
 ***************************************************************************/
 
 #include "emu.h"
+#include "livingarcade_rgb_command.h"
 #include "taito_f3.h"
 
 #include <algorithm>
@@ -1228,6 +1229,8 @@ void taito_f3_state::scanline_draw(bitmap_rgb32 &bitmap, const rectangle &clipre
 				}
 			}
 
+			if (auto *la = livingarcade_rgb_command::current)
+				la->blend_row(bitmap, screen_y, H_START, H_START + H_VIS, line_buf, m_palette->pens());
 			render_line(&bitmap.pix(screen_y), line_buf);
 		}
 
@@ -1443,9 +1446,10 @@ void taito_f3_state::draw_sprites(const rectangle &cliprect)
 /******************************************************************************/
 u32 taito_f3_state::screen_update(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect)
 {
+	livingarcade_rgb_command::scope la_rgb(bitmap, screen.frame_number(), cliprect);
 	machine().tilemap().set_flip_all(m_flipscreen ? (TILEMAP_FLIPY | TILEMAP_FLIPX) : 0);
 
-	bitmap.fill(0, cliprect);
+	livingarcade_rgb_command::fill(bitmap, 0, cliprect);
 
 	// TODO: presumably "sprite lag" is timing of sprite ram/framebuffer access.
 	if (m_sprite_lag == 0) {
@@ -1462,5 +1466,6 @@ u32 taito_f3_state::screen_update(screen_device &screen, bitmap_rgb32 &bitmap, c
 		get_sprite_info();
 	}
 
+	la_rgb.finish(bitmap);
 	return 0;
 }
