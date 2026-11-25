@@ -1224,7 +1224,8 @@ void tilemap_t::draw_roz_common(screen_device &screen, _BitmapClass &dest, const
 		return;
 	}
 
-	livingarcade_raster_command::unsupported();
+ 	if (!wraparound || sizeof(typename _BitmapClass::pixel_t)!=2)
+		livingarcade_raster_command::unsupported();
 	livingarcade_rgb_command::unsupported();
 	livingarcade_raster_probe::tile_entry(&dest, true, m_scrollrows > 1, m_scrollcols > 1);
 	auto profile = g_profiler.start(PROFILER_TILEMAP_DRAW_ROZ);
@@ -1554,9 +1555,17 @@ void tilemap_t::draw_roz_core(screen_device &screen, _BitmapClass &destbitmap, c
 			typename _BitmapClass::pixel_t *dest = &destbitmap.pix(sy, sx);
 			u8 *pri = (priority != 0xff00) ? &priority_bitmap.pix(sy, sx) : nullptr;
 
+			auto *la = livingarcade_raster_command::active;
+			const bool la_row = la && sizeof(typename _BitmapClass::pixel_t)==2 &&
+				la->sampled_tile_row(destbitmap, priority_bitmap, sx, sy, ex+1, priority);
 			// loop over columns
 			while (x <= ex)
 			{
+				if (la_row)
+				{
+					la->put(m_pixmap.pix((cy >> 16) & ymask, (cx >> 16) & xmask), 2);
+					la->put((m_flagsmap.pix((cy >> 16) & ymask, (cx >> 16) & xmask) & mask) == value ? 1 : 0, 1);
+				}
 				// plot if we match the mask
 				if ((m_flagsmap.pix((cy >> 16) & ymask, (cx >> 16) & xmask) & mask) == value)
 				{
