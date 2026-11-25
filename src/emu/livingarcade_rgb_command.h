@@ -114,6 +114,39 @@ struct scope {
             put(z.src_blend[x],1);put(z.dst_blend[x],1);
         }
     }
+    // Tags 7-9: bounded F3-style ordered source-layer selection graph.
+    // Every layer contributes sampled palette colors before priority tests.
+    // Source clipping, zoom and mosaic remain lowered by the original chip.
+    template<class Dest,class Blend>
+    void mixer_begin(const Dest &dest,int y,int start,int end,u32 zero,u32 background,const Blend &blend){
+        if(status)return;
+        if(&dest!=target||y<t||y>=b){status|=4;return;}
+        start=std::max(start,l);end=std::min(end,r);
+        if(start>=end)return;
+        if(!room(29))return;
+        put(7,1);rect(start,y,end,y+1);put(zero,4);put(background,4);
+        for(unsigned i=0;i<4;++i){if(blend[i]>8)status|=8;put(blend[i],1);}
+    }
+    bool mixer_layer(int y,int start,int end,unsigned pri,unsigned mode){
+        if(status)return false;
+        if(!bounds(start,y,end,y+1)||pri>255||mode>3){status|=8;return false;}
+        if(!room(19+6*u64(end-start)))return false;
+        put(8,1);rect(start,y,end,y+1);put(pri,1);put(mode,1);
+        return true;
+    }
+    void mixer_sample(bool selected,unsigned select,u32 color){
+        if(select>1)status|=8;
+        put(selected?1:0,1);put(select,1);put(color,4);
+    }
+    template<class Dest>
+    void mixer_end(const Dest &dest,int y,int start,int end){
+        if(status)return;
+        if(&dest!=target||y<t||y>=b){status|=4;return;}
+        start=std::max(start,l);end=std::min(end,r);
+        if(start>=end)return;
+        if(!room(17))return;
+        put(9,1);rect(start,y,end,y+1);
+    }
     // Tag 6: persistent PPU row source events, before background/sprite
     // visibility and priority composition. Events are published at copy time.
     template<class Dest,class Events>
