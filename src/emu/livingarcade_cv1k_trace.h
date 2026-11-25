@@ -37,12 +37,12 @@ inline void word(u16 v){
     if(active->words.size()>=max_payload/2){active->out->capped=true;return;}
     active->words.push_back(v);
 }
-template<class Rect> void view(u64 frame,const Rect &clip,int sx,int sy){
+template<class Rect> void view(u64 frame,int w,int h,const Rect &clip,int sx,int sy){
     auto &o=livingarcade_cv1k_trace::output();
     if(!o.f||o.failed||o.capped)return;
-    if(active||o.count>=1000000||o.bytes+36+12>max_file){o.capped=true;return;}
+    if(active||o.count>=1000000||o.bytes+44+12>max_file){o.capped=true;return;}
     o.write("VIEW",4);o.integer(frame,8);
-    for(int v:{clip.left(),clip.top(),clip.right()+1,clip.bottom()+1,sx,sy})o.integer(u32(v),4);
+    for(int v:{w,h,clip.left(),clip.top(),clip.right()+1,clip.bottom()+1,sx,sy})o.integer(u32(v),4);
     ++o.count;
 }
 }
