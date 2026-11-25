@@ -355,6 +355,15 @@ struct scope {
         for(unsigned i=0;i<128;++i)put(prom[i],1);
         return true;
     }
+    // Tag 16: System 18 VDP source scanline before tile/sprite composition.
+    template<class Dest,class Pri,class Source>
+    void vdp_row(const Dest &dest,const Pri &pri,int y,const Source &src,unsigned priority_bits){
+        if(status)return;
+        if(&dest!=target||&pri!=priority||y<t||y>=b||priority_bits>255){status|=4;return;}
+        if(!room(18+2*u64(r-l)))return;
+        put(16,1);rect(l,y,r,y+1);put(priority_bits,1);
+        for(int x=l;x<r;++x)put(src[x],2);
+    }
     // Optional companion stream, correlated one-to-one with committed UPD1 records.
     // This samples the effective adjusted palette at callback completion, NOT final
     // OSD scanout. Palette changes between callbacks remain a separate gate.
