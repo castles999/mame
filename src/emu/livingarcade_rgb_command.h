@@ -7,6 +7,7 @@
 namespace livingarcade_rgb_command {
 using namespace livingarcade_raster_command;
 inline writer &rgb_output(){static writer w("LIVINGARCADE_RGB_COMMAND","LARR0001");return w;}
+inline writer &secondary_rgb_output(){static writer w("LIVINGARCADE_RGB_COMMAND_SECONDARY","LARR0001");return w;}
 struct scope;
 inline thread_local scope *current=nullptr;
 struct scope {
@@ -19,9 +20,9 @@ struct scope {
     bool finished=false;
     std::vector<u8> payload;
     template<class Bitmap,class Rect>
-    scope(const Bitmap &dest,u64 f,const Rect &clip)
+    scope(const Bitmap &dest,u64 f,const Rect &clip,writer *selected=nullptr)
       :frame(f),w(dest.width()),h(dest.height()),l(clip.left()),t(clip.top()),r(clip.right()+1),b(clip.bottom()+1){
-        auto &o=rgb_output();
+        auto &o=selected?*selected:rgb_output();
         if(!o.f||o.failed||o.capped)return;
         if(current){current->status|=16;return;}
         if(o.count>=max_updates){o.capped=true;return;}
