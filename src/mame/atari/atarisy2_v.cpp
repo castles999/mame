@@ -7,6 +7,7 @@
 ****************************************************************************/
 
 #include "emu.h"
+#include "livingarcade_raster_command.h"
 #include "atarisy2.h"
 
 
@@ -214,6 +215,9 @@ void atarisy2_state::playfieldb_w(offs_t offset, uint16_t data, uint16_t mem_mas
 
 uint32_t atarisy2_state::screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
+	livingarcade_raster_command::scope la_commands(bitmap, screen.priority(), screen.frame_number(), cliprect);
+	la_commands.undefined_color();
+	livingarcade_raster_command::clear(2, 0);
 	// start drawing
 	m_mob->draw_async(cliprect);
 
@@ -238,6 +242,8 @@ uint32_t atarisy2_state::screen_update(screen_device &screen, bitmap_ind16 &bitm
 					uint16_t const *const mo = &mobitmap.pix(y);
 					uint16_t *const pf = &bitmap.pix(y);
 					uint8_t const *const pri = &priority_bitmap.pix(y);
+					if (auto *la = livingarcade_raster_command::active)
+						la->layer_mix_row(bitmap, rect.left(), y, rect.right()+1, mo+rect.left(), 0, 0, 0);
 					for (int x = rect.left(); x <= rect.right(); x++)
 					{
 						if (mo[x] != 0xffff)
@@ -261,5 +267,7 @@ uint32_t atarisy2_state::screen_update(screen_device &screen, bitmap_ind16 &bitm
 
 	// add the alpha on top
 	m_alpha_tilemap->draw(screen, bitmap, cliprect, 0, 0);
+	la_commands.finish(bitmap, screen.priority());
+	if (screen.has_palette()) la_commands.capture_palette(bitmap, screen.palette());
 	return 0;
 }
