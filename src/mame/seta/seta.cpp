@@ -1235,6 +1235,7 @@ Note: on screen copyright is (c)1998 Coinmaster.
 *******************************************************************************/
 
 #include "emu.h"
+#include "livingarcade_raster_command.h"
 
 #include "cpu/m68000/m68000.h"
 #include "cpu/z80/z80.h"
@@ -1930,10 +1931,15 @@ void seta_state::set_pens()
 // For games without tilemaps
 u32 seta_state::screen_update_seta_no_layers(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
+	livingarcade_raster_command::scope la_commands(bitmap, screen.priority(), screen.frame_number(), cliprect);
+	la_commands.seed_priority(screen.priority());
 	set_pens();
+	livingarcade_raster_command::clear(1, 0x1f0);
 	bitmap.fill(0x1f0, cliprect);
 
 	m_spritegen->draw_sprites(screen, bitmap,cliprect,0x1000);
+	la_commands.finish(bitmap, screen.priority());
+	la_commands.capture_palette(bitmap, *m_palette);
 	return 0;
 }
 
@@ -1980,6 +1986,7 @@ void seta_state::seta_layers_update(screen_device &screen, bitmap_ind16 &bitmap,
 	}
 #endif
 
+	livingarcade_raster_command::clear(1, 0);
 	bitmap.fill(0, cliprect);
 
 	const int order = m_layers[1].found() ? m_vregs : 0;
@@ -2065,7 +2072,11 @@ void seta_state::seta_layers_update(screen_device &screen, bitmap_ind16 &bitmap,
 
 u32 seta_state::screen_update_seta_layers(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
+	livingarcade_raster_command::scope la_commands(bitmap, screen.priority(), screen.frame_number(), cliprect);
+	la_commands.seed_priority(screen.priority());
 	seta_layers_update(screen, bitmap, cliprect, 0x1000);
+	la_commands.finish(bitmap, screen.priority());
+	la_commands.capture_palette(bitmap, *m_palette);
 	return 0;
 }
 
