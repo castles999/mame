@@ -344,6 +344,17 @@ struct scope {
         }
         pgm_dest=nullptr;pgm_pri=nullptr;
     }
+    // Tag 15: three independently sampled indexed source surfaces and
+    // hardware PROM. The decoder resolves visibility and palette bank.
+    template<class Dest,class Pri,class Prom>
+    bool prom_row(const Dest &dest,const Pri &pri,int y,const Prom &prom){
+        if(status)return false;
+        if(&dest!=target||&pri!=priority||y<t||y>=b){status|=4;return false;}
+        if(!room(17+128+6*u64(r-l)))return false;
+        put(15,1);rect(l,y,r,y+1);
+        for(unsigned i=0;i<128;++i)put(prom[i],1);
+        return true;
+    }
     // Optional companion stream, correlated one-to-one with committed UPD1 records.
     // This samples the effective adjusted palette at callback completion, NOT final
     // OSD scanout. Palette changes between callbacks remain a separate gate.
