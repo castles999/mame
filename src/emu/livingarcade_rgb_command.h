@@ -98,6 +98,34 @@ struct scope {
             put(p,1);
         }
     }
+    // Tag 5: two independently selected mixer operands and fixed-point
+    // contributions. No final RGB pixels are used as inputs.
+    template<class Dest,class Mix,class Color>
+    void blend_row(const Dest &dest,int y,int start,int end,const Mix &z,const Color *clut){
+        if(status)return;
+        if(&dest!=target||!clut||y<t||y>=b){status|=4;return;}
+        start=std::max(start,l);end=std::min(end,r);
+        if(start>=end)return;
+        if(!room(17+10*u64(end-start)))return;
+        put(5,1);rect(start,y,end,y+1);
+        for(int x=start;x<end;++x){
+            if(z.src_blend[x]>8||z.dst_blend[x]>8)status|=8;
+            put(u32(clut[z.src_pal[x]]),4);put(u32(clut[z.dst_pal[x]]),4);
+            put(z.src_blend[x],1);put(z.dst_blend[x],1);
+        }
+    }
+    // Tag 6: persistent PPU row source events, before background/sprite
+    // visibility and priority composition. Events are published at copy time.
+    template<class Dest,class Events>
+    void ppu_row(const Dest &dest,int y,const Events &events){
+        if(status)return;
+        if(&dest!=target||y<t||y>=b||events.empty()||events.size()>1024){status|=8;return;}
+        if(!room(25+8*u64(events.size())))return;
+        put(6,1);rect(l,y,r,y+1);put(events.size(),4);
+        for(const auto &event:events){
+            put(event.x,2);put(event.kind,1);put(event.pen,1);put(event.color,4);
+        }
+    }
     template<class Bitmap> void finish(const Bitmap &dest){
         if(!out||finished)return;
         finished=true;u64 hash=offset;
