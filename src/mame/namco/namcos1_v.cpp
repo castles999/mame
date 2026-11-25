@@ -7,6 +7,7 @@ Namco System 1 Video Hardware
 *******************************************************************/
 
 #include "emu.h"
+#include "livingarcade_raster_command.h"
 #include "namcos1.h"
 #include "screen.h"
 
@@ -107,6 +108,9 @@ u32 namcos1_state::sprite_bank_cb(u32 code, u32 bank)
 
 u32 namcos1_state::screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
+	livingarcade_raster_command::scope la_commands(bitmap, screen.priority(), screen.frame_number(), cliprect);
+	la_commands.seed_priority(screen.priority());
+	livingarcade_raster_command::clear(1, m_c116->black_pen());
 	rectangle new_clip = cliprect;
 
 	// background color
@@ -123,10 +127,15 @@ u32 namcos1_state::screen_update(screen_device &screen, bitmap_ind16 &bitmap, co
 	if (new_clip.max_y > i) new_clip.max_y = i;
 
 	if (new_clip.empty())
+	{
+	la_commands.finish(bitmap, screen.priority());
+	la_commands.capture_palette(bitmap, *m_c116);
 		return 0;
+	}
 
 	m_c123tmap->init_scroll(flip_screen());
 
+	la_commands.clear_region(new_clip, true, 0);
 	screen.priority().fill(0, new_clip);
 
 	// bit 0-2 priority
@@ -137,6 +146,8 @@ u32 namcos1_state::screen_update(screen_device &screen, bitmap_ind16 &bitmap, co
 	}
 
 	m_spritegen->draw_sprites(screen, bitmap, new_clip);
+	la_commands.finish(bitmap, screen.priority());
+	la_commands.capture_palette(bitmap, *m_c116);
 	return 0;
 }
 
