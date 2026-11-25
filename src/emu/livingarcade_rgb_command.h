@@ -270,6 +270,25 @@ struct scope {
             put(pixel?u32(palette[(pixel&255)+(col%colors)*granularity]):0,4);
         }
     }
+    // Tags 18/19: sampled Imagetek source rows. Tiles replace priority,
+    // sprites compare and claim priority even when visually obscured.
+    bool metro_priority=false;
+    void metro_begin(){
+        if(!out||status)return;
+        if(ops||metro_priority){status|=8;return;}
+        if(!room(1))return;
+        metro_priority=true;put(20,1);
+    }
+    template<class Dest>
+    bool metro_row(const Dest &dest,int a,int y,int d,unsigned pri,bool sprite){
+        if(!out||status)return false;
+        if(!metro_priority||&dest!=target||pri>255||!bounds(a,y,d,y+1)){status|=8;return false;}
+        if(!room(18+5*u64(d-a)))return false;
+        put(sprite?19:18,1);rect(a,y,d,y+1);put(pri,1);return true;
+    }
+    void metro_sample(bool selected,u32 color){
+        put(selected?1:0,1);put(selected?color:0,4);
+    }
     template<class Bitmap> void finish(const Bitmap &dest){
         if(!out||finished)return;
         finished=true;u64 hash=offset;
