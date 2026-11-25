@@ -998,6 +998,27 @@ bool taito_f3_state::mix_line(const Mix &gfx, mix_pix &z, pri_mode &pri, const f
 	const u16 *src = &gfx.bitmap.src->pix(y);
 	const u8 *flags = gfx.bitmap.flags ? &gfx.bitmap.flags->pix(y) : nullptr;
 
+	// Diagnostic graph: sample every candidate before destination-dependent
+	// priority or blend-mode rejection. Do not read the composed framebuffer.
+	if (auto *la = livingarcade_rgb_command::current)
+	{
+		const int start = std::max<int>(std::max<int>(range.l, H_START), la->l);
+		const int end = std::min<int>(std::min<int>(range.r, H_START + H_VIS), la->r);
+		if (start < end && la->mixer_layer(line.y, start, end, gfx.prio, gfx.blend_mode))
+		{
+			const auto *clut = m_palette->pens();
+			for (int x = start; x < end; ++x)
+			{
+				const int real_x = gfx.x_sample_enable ? mosaic(x, line.x_sample) : x;
+				const int gfx_x = gfx.x_index(real_x);
+				const u16 color = src[gfx_x];
+				const bool selected = color && !gfx.inactive_group(color) && (!flags || (flags[gfx_x] & 0xf0));
+				la->mixer_sample(selected, selected ? gfx.blend_select(flags, gfx_x) : 0,
+					selected ? clut[gfx.palette_adjust(color)] : 0);
+			}
+		}
+	}
+
 	for (int x = range.l; x < range.r; x++) {
 		if (gfx.blend_mode == pri.src_blendmode[x])
 			continue; // note that layers cannot blend against the same blend mode
@@ -1205,6 +1226,8 @@ void taito_f3_state::scanline_draw(bitmap_rgb32 &bitmap, const rectangle &clipre
 
 		// draw layers to framebuffer (currently top to bottom)
 		if (screen_y >= cliprect.min_y && screen_y <= cliprect.max_y) {
+			if (auto *la = livingarcade_rgb_command::current)
+				la->mixer_begin(bitmap, screen_y, H_START, H_START + H_VIS, m_palette->pens()[0], m_palette->pens()[line_data.bg_palette], line_data.blend);
 			for (auto gfx : layers) {
 				std::visit(
 						[this, &line_data, &line_buf, &line_pri] (auto &&arg) {
@@ -1230,7 +1253,7 @@ void taito_f3_state::scanline_draw(bitmap_rgb32 &bitmap, const rectangle &clipre
 			}
 
 			if (auto *la = livingarcade_rgb_command::current)
-				la->blend_row(bitmap, screen_y, H_START, H_START + H_VIS, line_buf, m_palette->pens());
+				la->mixer_end(bitmap, screen_y, H_START, H_START + H_VIS);
 			render_line(&bitmap.pix(screen_y), line_buf);
 		}
 
