@@ -151,6 +151,7 @@ The full silkscreen markings of SC2 (under the "Special Chip 2" sticker, if it i
 ******************************************************************************/
 
 #include "emu.h"
+#include "livingarcade_rgb_command.h"
 #include "video/resnet.h"
 #include "williams.h"
 
@@ -199,15 +200,19 @@ void williams2_state::video_start()
 
 uint32_t williams_state::screen_update(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect)
 {
+	livingarcade_rgb_command::scope la_rgb(bitmap, screen.frame_number(), cliprect);
 	// precompute the palette
 	rgb_t pens[16];
 	for (int x = 0; x < 16; x++)
 		pens[x] = m_palette->pen_color(m_paletteram[x]);
 
+	la_rgb.vram4_begin(bitmap, pens, false);
+
 	// loop over rows
 	for (int y = cliprect.min_y; y <= cliprect.max_y; y++)
 	{
 		uint8_t const *const source = &m_videoram[y];
+		if (la_rgb.out) la_rgb.vram4_row(bitmap, y, source);
 		uint32_t *const dest = &bitmap.pix(y);
 
 		// loop over columns
@@ -218,6 +223,7 @@ uint32_t williams_state::screen_update(screen_device &screen, bitmap_rgb32 &bitm
 			dest[x + 1] = pens[pix & 0x0f];
 		}
 	}
+	la_rgb.finish(bitmap);
 	return 0;
 }
 
@@ -267,6 +273,7 @@ uint32_t blaster_state::screen_update(screen_device &screen, bitmap_rgb32 &bitma
 
 uint32_t williams2_state::screen_update(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect)
 {
+	livingarcade_rgb_command::scope la_rgb(bitmap, screen.frame_number(), cliprect);
 	rgb_t pens[16];
 
 	// draw the background
@@ -276,10 +283,13 @@ uint32_t williams2_state::screen_update(screen_device &screen, bitmap_rgb32 &bit
 	for (int x = 1; x < 16; x++)
 		pens[x] = m_palette->pen_color(m_fg_color * 16 + x);
 
+	la_rgb.vram4_begin(bitmap, pens, true);
+
 	// loop over rows
 	for (int y = cliprect.min_y; y <= cliprect.max_y; y++)
 	{
 		uint8_t const *const source = &m_videoram[y];
+		if (la_rgb.out) la_rgb.vram4_row(bitmap, y, source);
 		uint32_t *const dest = &bitmap.pix(y);
 
 		// loop over columns
@@ -293,6 +303,7 @@ uint32_t williams2_state::screen_update(screen_device &screen, bitmap_rgb32 &bit
 				dest[x+1] = pens[pix & 0x0f];
 		}
 	}
+	la_rgb.finish(bitmap);
 	return 0;
 }
 
