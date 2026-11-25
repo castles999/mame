@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <vector>
 #include <limits>
 namespace livingarcade_raster_command {
@@ -61,6 +62,15 @@ inline bool snapshot_colors(const Palette &palette,std::vector<u32> &colors){
 // command stream and contains only pre-OSD reference pixels, never media
 // for distribution. Both capture and reference-only runs may enable it.
 inline writer &exact_output(){static writer w("LIVINGARCADE_EXACT_PRESENT","LARX0001");return w;}
+inline writer &exact_secondary_output(){static writer w("LIVINGARCADE_EXACT_PRESENT_SECONDARY","LARX0001");return w;}
+// Only the known VS dual-screen topology is eligible for this split stream.
+inline int ppu_screen_slot(const char *tag,int count){
+    if(count==1)return 0;
+    if(count!=2)return -1;
+    if(std::strcmp(tag,":screen1")==0)return 0;
+    if(std::strcmp(tag,":screen2")==0)return 1;
+    return -1;
+}
 inline void exact_record(writer &o,u64 frame,int w,int h,int l,int t,int r,int b,
                          u32 kind,u32 status,const std::vector<u8> &pixels){
     if(o.bytes+48+pixels.size()+12>max_file){o.capped=true;return;}
@@ -97,8 +107,8 @@ inline void exact_indexed_present(const Bitmap &dest,const Palette &palette,u64 
     exact_record(o,frame,w,h,l,t,r,b,1,status,pixels);
 }
 template<class Bitmap,class Rect>
-inline void exact_rgb_present(const Bitmap &dest,u64 frame,const Rect &clip){
-    auto &o=exact_output();
+inline void exact_rgb_present(const Bitmap &dest,u64 frame,const Rect &clip,writer *selected=nullptr){
+    auto &o=selected?*selected:exact_output();
     if(!o.f||o.failed||o.capped)return;
     if(o.count>=max_updates){o.capped=true;return;}
     const int w=dest.width(),h=dest.height(),l=clip.left(),t=clip.top(),r=clip.right()+1,b=clip.bottom()+1;
