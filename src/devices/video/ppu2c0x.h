@@ -212,6 +212,14 @@ protected:
 	bool m_paletteram_in_ppuspace; // sh6578 doesn't have the palette in PPU space, so various side-effects don't apply
 	std::vector<u8>        m_palette_ram;          /* shouldn't be in main memory! */
 	bitmap_rgb32                m_bitmap;          /* target bitmap */
+	// Private diagnostic source history, not emulator save-state data.
+	// A scanline may be regenerated before publication (e.g. light guns).
+	struct la_ppu_event { u16 x; u8 kind, pen; u32 color; };
+	struct la_ppu_row { std::vector<la_ppu_event> events; bool valid = false; };
+	std::array<la_ppu_row, VISIBLE_SCREEN_HEIGHT> m_la_rows;
+	bool m_la_record_line = false;
+	void la_source_event(int x, unsigned kind, unsigned pen, u32 color);
+
 	u8                          m_regs[PPU_MAX_REG];        /* registers */
 	u32                         m_tile_page;            /* current tile page */
 	u8                          m_back_color;           /* background color */
