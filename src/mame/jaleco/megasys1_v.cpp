@@ -194,6 +194,7 @@ actual code sent to the hardware.
 ***************************************************************************/
 
 #include "emu.h"
+#include "livingarcade_raster_command.h"
 #include "megasys1.h"
 #include "sound/ymopm.h"
 
@@ -338,6 +339,8 @@ void megasys1_state::mix_sprite_bitmap(screen_device &screen, bitmap_ind16 &bitm
 		u16 const *const srcline = &m_sprite_buffer_bitmap.pix(y);
 		u16 *const dstline = &bitmap.pix(y);
 		u8 const *const prio = &screen.priority().pix(y);
+		if (auto *la = livingarcade_raster_command::active)
+			la->layer_mix_row(bitmap, cliprect.min_x, y, cliprect.max_x+1, srcline+cliprect.min_x, 1, colorbase, 0);
 
 		for (int x = cliprect.min_x; x <= cliprect.max_x; x++)
 		{
@@ -739,6 +742,9 @@ void megasys1_state::megasys1_palette(palette_device &palette)
 
 u32 megasys1_state::screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
+	livingarcade_raster_command::scope la_commands(bitmap, screen.priority(), screen.frame_number(), cliprect);
+	// Defined coverage must be established by bottom tiles or explicit clear.
+	la_commands.undefined_color();
 	u32 pri;
 	u32 active_layers;
 
@@ -781,6 +787,7 @@ u32 megasys1_state::screen_update(screen_device &screen, bitmap_ind16 &bitmap, c
 		}
 	}
 
+	livingarcade_raster_command::clear(2, 0);
 	screen.priority().fill(0, cliprect);
 
 	u32 flag = TILEMAP_DRAW_OPAQUE;
@@ -807,6 +814,7 @@ u32 megasys1_state::screen_update(screen_device &screen, bitmap_ind16 &bitmap, c
 			if (flag != 0)
 			{
 				flag = 0;
+				if (auto *la = livingarcade_raster_command::active) la->status |= 16; // late clear not representable yet
 				bitmap.fill(0, cliprect);
 			}
 
@@ -832,6 +840,8 @@ u32 megasys1_state::screen_update(screen_device &screen, bitmap_ind16 &bitmap, c
 
 	}
 
+	la_commands.finish(bitmap, screen.priority());
+	if (screen.has_palette()) la_commands.capture_palette(bitmap, screen.palette());
 	return 0;
 }
 
