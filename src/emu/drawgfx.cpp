@@ -553,7 +553,8 @@ void gfx_element::transtable(bitmap_ind16 &dest, const rectangle &cliprect,
 		const u8 *pentable)
 {
 	livingarcade_raster_probe::gfx_entry(&dest, false, false, false);
-	livingarcade_raster_command::unsupported();
+	if (auto *la = livingarcade_raster_command::active)
+		la->shadow_sprite(*this, dest, cliprect, code, color, flipx, flipy, destx, desty, pentable, DRAWMODE_NONE, DRAWMODE_SHADOW);
 	livingarcade_rgb_command::unsupported();
 	assert(pentable != nullptr);
 
@@ -1101,7 +1102,7 @@ void gfx_element::prio_transmask(bitmap_ind16 &dest, const rectangle &cliprect,
 		bitmap_ind8 &priority, u32 pmask, u32 trans_mask)
 {
 	livingarcade_raster_probe::gfx_entry(&dest, true, false, false);
-	livingarcade_raster_command::unsupported();
+	livingarcade_raster_command::masked_sprite_guard la_sprite(*this, dest, priority, cliprect, code, color, flipx, flipy, destx, desty, pmask, trans_mask);
 	livingarcade_rgb_command::unsupported();
 	// special case 0 mask to opaque
 	if (trans_mask == 0)
