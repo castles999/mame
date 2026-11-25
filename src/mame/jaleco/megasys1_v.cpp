@@ -814,7 +814,7 @@ u32 megasys1_state::screen_update(screen_device &screen, bitmap_ind16 &bitmap, c
 			if (flag != 0)
 			{
 				flag = 0;
-				if (auto *la = livingarcade_raster_command::active) la->status |= 16; // late clear not representable yet
+				la_commands.clear_region(cliprect, false, 0);
 				bitmap.fill(0, cliprect);
 			}
 
