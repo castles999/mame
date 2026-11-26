@@ -21,8 +21,8 @@ inline constexpr u64 offset = 14695981039346656037ULL, prime = 1099511628211ULL;
 inline void mix(u64 &h,unsigned b){h=(h^(b&255))*prime;}
 struct writer {
     std::FILE *f=nullptr; u64 bytes=0; u32 count=0; bool failed=false,capped=false;
-    explicit writer(const char *env="LIVINGARCADE_RASTER_COMMAND",const char *magic="LARC0001"){
-        const char *p=std::getenv(env);
+    explicit writer(const char *env="LIVINGARCADE_RASTER_COMMAND",const char *magic="LARC0001",const char *direct_path=nullptr){
+        const char *p=direct_path?direct_path:std::getenv(env);
         if(!p||!*p)return;
         f=std::fopen(p,"wbx");
         if(!f){std::fputs("LivingArcade command capture: fresh output required\n",stderr);return;}
@@ -33,11 +33,15 @@ struct writer {
         if(std::fwrite(p,1,n,f)!=n)failed=true; else bytes+=n;
     }
     void integer(u64 v,unsigned n){u8 b[8];for(unsigned i=0;i<n;++i)b[i]=u8(v>>(8*i));write(b,n);}
-    ~writer(){
+    void close(){
         if(!f)return;
         if(!failed){write("END1",4);integer(count,4);integer(capped?1:0,4);}
-        std::fclose(f);
+        if(std::fclose(f)!=0)failed=true;
+        f=nullptr;
     }
+    ~writer(){close();}
+    writer(const writer&)=delete;
+    writer& operator=(const writer&)=delete;
 };
 inline writer &output(){static writer w;return w;}
 inline writer &palette_output(){static writer w("LIVINGARCADE_RASTER_PALETTE","LARP0001");return w;}
