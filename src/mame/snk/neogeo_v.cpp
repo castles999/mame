@@ -157,14 +157,33 @@ void neogeo_base_state::video_reset()
 
 uint32_t neogeo_base_state::screen_update(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect)
 {
-	livingarcade_scanline_command::scanline_scope la_line(bitmap, screen.frame_number(), cliprect, *m_bg_pen);
-	// fill with background color first
-	bitmap.fill(*m_bg_pen, cliprect);
+	// Native MAME fills the whole clip, but draws only its first row.
+	// Preserve that behavior; subsequent rows have background-only LIN1 records.
+	const u32 background = *m_bg_pen;
+	rectangle first_row = cliprect;
+	if (first_row.max_y > first_row.min_y)
+		first_row.max_y = first_row.min_y;
+	{
+		livingarcade_scanline_command::scanline_scope la_line(bitmap, screen.frame_number(), first_row, background);
+		bitmap.fill(background, cliprect);
 
-	m_sprgen->draw_sprites(bitmap, cliprect.min_y);
+		m_sprgen->draw_sprites(bitmap, cliprect.min_y);
+		m_sprgen->draw_fixed_layer(bitmap, cliprect.min_y);
+		la_line.finish(bitmap);
+	}
 
-	m_sprgen->draw_fixed_layer(bitmap, cliprect.min_y);
-	la_line.finish(bitmap);
+	// The first scope must release line_active before opening another.
+	auto &out = livingarcade_scanline_command::scanline_output();
+	if (out.f && !out.failed && !out.capped)
+	{
+		for (int y = cliprect.min_y + 1; y <= cliprect.max_y && !out.failed && !out.capped; ++y)
+		{
+			rectangle row = cliprect;
+			row.min_y = row.max_y = y;
+			livingarcade_scanline_command::scanline_scope la_line(bitmap, screen.frame_number(), row, background);
+			la_line.finish(bitmap);
+		}
+	}
 
 	return 0;
 }
