@@ -236,6 +236,23 @@ void neosprite_base_device::draw_fixed_layer(bitmap_rgb32 &bitmap, int scanline)
 
 			static const u32 pix_offsets[] = { 0x10, 0x18, 0x00, 0x08 };
 
+			if (livingarcade_scanline_command::tile_active())
+			{
+				u8 decoded[64];
+				const u32 base = u32(gfx_offset) & ~31U;
+				const bool valid = m_bppshift == 4 && base <= addr_mask && addr_mask - base >= 31;
+				if (valid)
+					for (unsigned yy = 0; yy < 8; ++yy)
+						for (unsigned i = 0; i < 4; ++i)
+						{
+							const u8 d = gfx_base[base + yy + pix_offsets[i]];
+							decoded[yy * 8 + i * 2] = d & 15;
+							decoded[yy * 8 + i * 2 + 1] = d >> 4;
+						}
+				livingarcade_scanline_command::source_tile_row(valid ? decoded : nullptr, 8, gfx_offset & 7,
+					NEOGEO_HBEND + x * 8, 0xff00, false, false, char_pens);
+			}
+
 			for (int i = 0; i < 4; i++)
 			{
 				draw_fixed_layer_2pixels(pixel_addr, gfx_offset + pix_offsets[i], gfx_base, char_pens);
@@ -400,6 +417,16 @@ void neosprite_base_device::draw_sprites(bitmap_rgb32 &bitmap, int scanline)
 			int gfx_base = ((code << 8) | (sprite_y << 4)) & m_sprite_gfx_address_mask;
 
 			const pen_t *line_pens = &m_pens[attr >> 8 << m_bppshift];
+
+			if (livingarcade_scanline_command::tile_active())
+			{
+				const bool wrap = x > 0x1f0;
+				const u32 base = u32(gfx_base) & ~255U;
+				livingarcade_scanline_command::source_tile_row(
+					m_bppshift == 4 ? capture_source_tile(base) : nullptr, 16,
+					(u32(gfx_base) >> 4) & 15, x + NEOGEO_HBEND - (wrap ? 512 : 0),
+					zoom_x_table, BIT(attr, 0), wrap, line_pens);
+			}
 
 			int x_inc;
 
