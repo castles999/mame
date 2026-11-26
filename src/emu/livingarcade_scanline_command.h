@@ -8,6 +8,37 @@
 namespace livingarcade_scanline_command {
 using namespace livingarcade_raster_command;
 inline constexpr u32 max_scanlines=262144, max_events=8192;
+// Optional diagnostic frame window: inclusive start, exclusive end.
+// Both values must be valid decimal frame numbers; malformed pairs record
+// nothing, so the strict local verifier fails rather than accepting a prefix.
+struct capture_window {
+    u64 begin=0,end=0;
+    bool enabled=false,valid=true;
+    static bool parse(const char *p,u64 &value){
+        if(!p||!*p)return false;
+        value=0;
+        for(;*p;++p){
+            if(*p<'0'||*p>'9')return false;
+            value=value*10+unsigned(*p-'0');
+            if(value>1000000)return false;
+        }
+        return true;
+    }
+    capture_window(){
+        const char *a=std::getenv("LIVINGARCADE_NEOGEO_START_FRAME");
+        const char *b=std::getenv("LIVINGARCADE_NEOGEO_END_FRAME");
+        enabled=a||b;
+        if(enabled)valid=parse(a,begin)&&parse(b,end)&&begin<end;
+    }
+    bool contains(u64 frame)const{
+        return !enabled||(valid&&frame>=begin&&frame<end);
+    }
+};
+inline bool capture_frame(u64 frame){
+    static const capture_window window;
+    return window.contains(frame);
+}
+
 inline writer &scanline_output(){
     static writer w("LIVINGARCADE_NEOGEO_COMMAND","LANE0001");
     return w;
@@ -52,6 +83,7 @@ struct scanline_scope {
     scanline_scope(const Bitmap &dest,u64 f,const Rect &clip,u32 background)
       :w(dest.width()),h(dest.height()),l(clip.left()),t(clip.top()),
        r(clip.right()+1),b(clip.bottom()+1),frame(f),bg(background){
+        if(!capture_frame(f))return;
         auto &o=scanline_output();
         if(!o.f||o.failed||o.capped||line_active)return;
         if(o.count>=max_scanlines){o.capped=true;return;}

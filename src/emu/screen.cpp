@@ -1799,8 +1799,11 @@ bool screen_device::update_quads()
 				}
 				if (m_is_primary_screen && !(m_video_attributes & VIDEO_VARIABLE_WIDTH) && m_bitmap[m_curbitmap].format() == BITMAP_FORMAT_RGB32)
 				{
-					livingarcade_scanline_command::frame_witness(m_bitmap[m_curbitmap].as_rgb32(), frame_number(), m_visarea);
-					livingarcade_raster_command::exact_rgb_present(m_bitmap[m_curbitmap].as_rgb32(), frame_number(), m_visarea);
+					if (livingarcade_scanline_command::capture_frame(frame_number()))
+					{
+						livingarcade_scanline_command::frame_witness(m_bitmap[m_curbitmap].as_rgb32(), frame_number(), m_visarea);
+						livingarcade_raster_command::exact_rgb_present(m_bitmap[m_curbitmap].as_rgb32(), frame_number(), m_visarea);
+					}
 				}
 				// Secondary RGB publication is opt-in and bound to the known VS topology.
 				if (!m_is_primary_screen && !(m_video_attributes & VIDEO_VARIABLE_WIDTH) && m_bitmap[m_curbitmap].format() == BITMAP_FORMAT_RGB32 &&
