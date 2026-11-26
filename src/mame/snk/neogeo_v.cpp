@@ -173,7 +173,7 @@ uint32_t neogeo_base_state::screen_update(screen_device &screen, bitmap_rgb32 &b
 	}
 
 	// The first scope must release line_active before opening another.
-	auto &out = livingarcade_scanline_command::scanline_output();
+	auto &out = livingarcade_scanline_command::command_for_frame(screen.frame_number());
 	if (out.f && !out.failed && !out.capped)
 	{
 		for (int y = cliprect.min_y + 1; y <= cliprect.max_y && !out.failed && !out.capped; ++y)

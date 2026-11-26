@@ -5,6 +5,8 @@
 #ifndef MAME_EMU_LIVINGARCADE_SCANLINE_COMMAND_H
 #define MAME_EMU_LIVINGARCADE_SCANLINE_COMMAND_H
 #include "livingarcade_raster_command.h"
+#include <memory>
+#include <string>
 namespace livingarcade_scanline_command {
 using namespace livingarcade_raster_command;
 inline constexpr u32 max_scanlines=262144, max_events=8192;
@@ -34,10 +36,56 @@ struct capture_window {
         return !enabled||(valid&&frame>=begin&&frame<end);
     }
 };
-inline bool capture_frame(u64 frame){
+inline const capture_window &frame_window(){
     static const capture_window window;
-    return window.contains(frame);
+    return window;
 }
+inline bool capture_frame(u64 frame){return frame_window().contains(frame);}
+
+// CAP15.2: rotate each of the three independent streams by emulated frame
+// number, not wall time. Each file retains the existing wire format/budget.
+// The caller precreates a fresh private directory per chunk. No path is
+// opened until its first frame; a failed/capped stream never opens a successor.
+struct chunk_config {
+    const char *root=std::getenv("LIVINGARCADE_NEOGEO_CHUNK_ROOT");
+    u64 length=0;
+    bool valid=false;
+    chunk_config(){
+        const auto &w=frame_window();
+        valid=root&&*root&&w.enabled&&w.valid&&
+            capture_window::parse(std::getenv("LIVINGARCADE_NEOGEO_CHUNK_FRAMES"),length)&&
+            length>=1&&length<=296&&(w.end-w.begin)<=12*length;
+    }
+};
+inline const chunk_config &chunks(){static const chunk_config c;return c;}
+struct chunk_stream {
+    const char *name,*magic;
+    std::unique_ptr<writer> current;
+    writer disabled{"","", ""};
+    u64 index=0;
+    bool stopped=false;
+    chunk_stream(const char *n,const char *m):name(n),magic(m){}
+    writer &get(u64 frame){
+        const auto &c=chunks();
+        if(stopped||!c.valid||!capture_frame(frame))return disabled;
+        const u64 next=(frame-frame_window().begin)/c.length;
+        if(current&&next==index)return *current;
+        if((!current&&next!=0)||(current&&next!=index+1)){
+            stopped=true;
+            if(current)current->failed=true;
+            return disabled;
+        }
+        if(current){
+            current->close();
+            if(current->failed||current->capped){stopped=true;return disabled;}
+        }
+        index=next;
+        const std::string path=std::string(c.root)+"/chunk-"+std::to_string(index)+"/"+name;
+        current=std::make_unique<writer>("",magic,path.c_str());
+        if(!current->f||current->failed)stopped=true;
+        return *current;
+    }
+};
 
 inline writer &scanline_output(){
     static writer w("LIVINGARCADE_NEOGEO_COMMAND","LANE0001");
@@ -47,11 +95,26 @@ inline writer &frame_output(){
     static writer w("LIVINGARCADE_NEOGEO_PRESENT","LANF0001");
     return w;
 }
+inline writer &command_for_frame(u64 frame){
+    if(!chunks().root)return scanline_output();
+    static chunk_stream stream("command.private.bin","LANE0001");
+    return stream.get(frame);
+}
+inline writer &publication_for_frame(u64 frame){
+    if(!chunks().root)return frame_output();
+    static chunk_stream stream("frame.private.bin","LANF0001");
+    return stream.get(frame);
+}
+inline writer &exact_for_frame(u64 frame){
+    if(!chunks().root)return exact_output();
+    static chunk_stream stream("exact.private.bin","LARX0001");
+    return stream.get(frame);
+}
 inline writer &secondary_frame_output(){static writer w("LIVINGARCADE_NEOGEO_PRESENT_SECONDARY","LANF0001");return w;}
 // Complete RGB texture-source witness, independent of scanline commands.
 template<class Bitmap,class Rect>
 inline void frame_witness(const Bitmap &dest,u64 frame,const Rect &clip,writer *selected=nullptr){
-    auto &o=selected?*selected:frame_output();
+    auto &o=selected?*selected:publication_for_frame(frame);
     if(!o.f||o.failed||o.capped)return;
     if(o.count>=max_updates){o.capped=true;return;}
     const int w=dest.width(),h=dest.height(),l=clip.left(),t=clip.top(),r=clip.right()+1,b=clip.bottom()+1;
@@ -84,7 +147,7 @@ struct scanline_scope {
       :w(dest.width()),h(dest.height()),l(clip.left()),t(clip.top()),
        r(clip.right()+1),b(clip.bottom()+1),frame(f),bg(background){
         if(!capture_frame(f))return;
-        auto &o=scanline_output();
+        auto &o=command_for_frame(f);
         if(!o.f||o.failed||o.capped||line_active)return;
         if(o.count>=max_scanlines){o.capped=true;return;}
         out=&o;line_active=this;

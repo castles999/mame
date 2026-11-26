@@ -1802,7 +1802,7 @@ bool screen_device::update_quads()
 					if (livingarcade_scanline_command::capture_frame(frame_number()))
 					{
 						livingarcade_scanline_command::frame_witness(m_bitmap[m_curbitmap].as_rgb32(), frame_number(), m_visarea);
-						livingarcade_raster_command::exact_rgb_present(m_bitmap[m_curbitmap].as_rgb32(), frame_number(), m_visarea);
+						livingarcade_raster_command::exact_rgb_present(m_bitmap[m_curbitmap].as_rgb32(), frame_number(), m_visarea, &livingarcade_scanline_command::exact_for_frame(frame_number()));
 					}
 				}
 				// Secondary RGB publication is opt-in and bound to the known VS topology.
