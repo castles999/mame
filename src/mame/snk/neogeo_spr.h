@@ -72,6 +72,7 @@ protected:
 	inline bool sprite_on_scanline(int scanline, int y, int rows);
 
 	virtual void draw_pixel(int romaddr, u32* dst, const pen_t *line_pens) = 0;
+	virtual const u8 *capture_source_tile(u32 base) const { (void)base; return nullptr; }
 
 	virtual void draw_fixed_layer_2pixels(u32*&pixel_addr, int offset, u8* gfx_base, const pen_t* char_pens);
 
@@ -132,6 +133,9 @@ public:
 	virtual void draw_pixel(int romaddr, u32* dst, const pen_t *line_pens) override;
 	std::vector<u8> m_sprite_gfx;
 	u8* m_spritegfx8;
+	const u8 *capture_source_tile(u32 base) const override {
+		return m_spritegfx8 && (base & 255) == 0 && base <= m_sprite_gfx_address_mask && m_sprite_gfx_address_mask - base >= 255 ? m_spritegfx8 + base : nullptr;
+	}
 
 private:
 	u32 optimize_helper(std::vector<u8> &spritegfx, u8* region_sprites, u32 region_sprites_size);
