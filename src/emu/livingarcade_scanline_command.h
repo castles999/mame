@@ -180,6 +180,18 @@ struct scanline_scope {
         if(!out||status||!tile_mode())return;
         if(!src||!palette||(side!=8&&side!=16)||sy>=side||x<-16||x>383||
            !mask||(side==8&&(mask!=0xff00||flip||wrap))||++draws>136){status|=8;return;}
+        // A transparent/clipped row changes no destination pixel. Omit it
+        // before dictionary lookup, especially the many blank fixed cells.
+        bool visible=false;
+        int dx=x;
+        for(unsigned i=0;i<side;++i){
+            if(!(mask&(0x8000U>>i)))continue;
+            const u8 pen=src[sy*side+(flip?side-1-i:i)];
+            if(pen>15){status|=8;return;}
+            if(pen&&dx>=l&&dx<r&&(!wrap||dx>=28))visible=true;
+            ++dx;
+        }
+        if(!visible)return;
         std::string key(1,char(side));
         for(unsigned i=0;i<side*side;i+=2){
             if(src[i]>15||src[i+1]>15){status|=8;return;}
