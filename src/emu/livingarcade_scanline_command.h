@@ -142,6 +142,17 @@ struct tile_dictionary {
     std::unordered_map<std::string,u16> tiles,palettes;
 };
 inline tile_dictionary &tile_dict(){static tile_dictionary d;return d;}
+// Diagnostic source-identity sidecar. Each emitted draw has exactly one
+// matching identity record; no attempt to infer lifetime/generation here.
+inline bool identity_mode(){
+    static const bool enabled=[](){const char *p=std::getenv("LIVINGARCADE_NEOGEO_IDENTITY");return p&&std::strcmp(p,"1")==0;}();
+    return enabled&&tile_mode();
+}
+inline writer &identity_for_frame(u64 frame){
+    static chunk_stream stream("identity.private.bin","LAID0001");
+    return stream.get(frame);
+}
+struct source_identity { u32 fields[12]; };
 struct scanline_scope;
 inline thread_local scanline_scope *line_active=nullptr;
 struct event { u16 x; u8 pen,layer; u32 color; };
@@ -155,6 +166,7 @@ struct scanline_scope {
     std::vector<event> events;
     std::vector<u8> tile_payload;
     unsigned draws=0;
+    std::vector<u8> identities;
     template<class Bitmap,class Rect>
     scanline_scope(const Bitmap &dest,u64 f,const Rect &clip,u32 background)
       :w(dest.width()),h(dest.height()),l(clip.left()),t(clip.top()),
@@ -218,6 +230,23 @@ struct scanline_scope {
         append(3,1);append(ti->second,2);append(pi->second,2);append(u16(x),2);
         append(mask,2);append(sy,1);append((flip?1:0)|(wrap?2:0),1);
     }
+    void record_identity(const source_identity *id){
+        if(!identity_mode())return;
+        if(!id){status|=16;return;}
+        for(u32 v:id->fields)for(unsigned j=0;j<4;++j)identities.push_back(u8(v>>(8*j)));
+        // Exact descriptor bytes bind this sidecar record to the original TIL1 draw.
+        identities.insert(identities.end(),tile_payload.end()-11,tile_payload.end());
+    }
+    void finish_identity(){
+        if(!identity_mode())return;
+        auto &o=identity_for_frame(frame);
+        if(!o.f||o.failed||o.capped)return;
+        if(o.count>=max_scanlines||o.bytes+24+identities.size()+12>max_file){o.capped=true;return;}
+        o.write("IDR1",4);o.integer(frame,8);o.integer(u32(t),4);
+        o.integer(status,4);o.integer(identities.size()/59,4);
+        o.write(identities.data(),identities.size());++o.count;
+        if(std::fflush(o.f)!=0)o.failed=true;
+    }
     void put(const u32 *dst,unsigned pen,u32 color,unsigned layer){
         if(status||tile_mode())return;
         const auto addr=reinterpret_cast<std::uintptr_t>(dst);
@@ -249,12 +278,17 @@ struct scanline_scope {
         }
         ++out->count;
         if(std::fflush(out->f)!=0)out->failed=true;
+        finish_identity();
     }
 };
 inline bool tile_active(){return tile_mode()&&line_active&&line_active->out&&!line_active->status;}
 template<class Pen>
-inline void source_tile_row(const u8 *src,unsigned side,unsigned sy,int x,u16 mask,bool flip,bool wrap,const Pen *palette){
-    if(tile_active())line_active->source_row(src,side,sy,x,mask,flip,wrap,palette);
+inline void source_tile_row(const u8 *src,unsigned side,unsigned sy,int x,u16 mask,bool flip,bool wrap,const Pen *palette,const source_identity *id=nullptr){
+    if(!tile_active())return;
+    const auto before=line_active->tile_payload.size();
+    line_active->source_row(src,side,sy,x,mask,flip,wrap,palette);
+    if(!line_active->status&&line_active->tile_payload.size()>before)
+        line_active->record_identity(id);
 }
 inline void source_pixel(const u32 *dst,unsigned pen,u32 color,unsigned layer){
     if(line_active)line_active->put(dst,pen,color,layer);
