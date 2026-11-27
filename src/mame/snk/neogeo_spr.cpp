@@ -249,8 +249,12 @@ void neosprite_base_device::draw_fixed_layer(bitmap_rgb32 &bitmap, int scanline)
 							decoded[yy * 8 + i * 2] = d & 15;
 							decoded[yy * 8 + i * 2 + 1] = d >> 4;
 						}
+				const livingarcade_scanline_command::source_identity id{{
+					2, u32(x), u32(scanline >> 3), u32(code), u32(code_and_palette),
+					u32(m_fixed_layer_source), u32(gfx_offset), addr_mask, u32(m_fixed_layer_bank_type),
+					u32(banked), 0, 0}};
 				livingarcade_scanline_command::source_tile_row(valid ? decoded : nullptr, 8, gfx_offset & 7,
-					NEOGEO_HBEND + x * 8, 0xff00, false, false, char_pens);
+					NEOGEO_HBEND + x * 8, 0xff00, false, false, char_pens, &id);
 			}
 
 			for (int i = 0; i < 4; i++)
@@ -312,6 +316,7 @@ void neosprite_base_device::draw_sprites(bitmap_rgb32 &bitmap, int scanline)
 	int rows = 0;
 	int zoom_y = 0;
 	int zoom_x = 0;
+	u32 capture_chain_head = 0xffffffffU;
 	u16 *sprite_list;
 
 	/* select the active list */
@@ -348,6 +353,7 @@ void neosprite_base_device::draw_sprites(bitmap_rgb32 &bitmap, int scanline)
 		/* new block */
 		else
 		{
+			capture_chain_head = sprite_number;
 			y = 0x200 - (y_control >> 7);
 			x = m_videoram_drawsource[0x8400 | sprite_number] >> 7;
 
@@ -422,10 +428,14 @@ void neosprite_base_device::draw_sprites(bitmap_rgb32 &bitmap, int scanline)
 			{
 				const bool wrap = x > 0x1f0;
 				const u32 base = u32(gfx_base) & ~255U;
+				const livingarcade_scanline_command::source_identity id{{
+					1, sprite_number, capture_chain_head, u32(sprite_index), u32(tile), u32(attr),
+					code, u32(gfx_base), u32(y_control), u32(zoom_control),
+					u32(y), u32(m_auto_animation_counter) | (u32(m_auto_animation_disabled) << 8)}};
 				livingarcade_scanline_command::source_tile_row(
 					m_bppshift == 4 ? capture_source_tile(base) : nullptr, 16,
 					(u32(gfx_base) >> 4) & 15, x + NEOGEO_HBEND - (wrap ? 512 : 0),
-					zoom_x_table, BIT(attr, 0), wrap, line_pens);
+					zoom_x_table, BIT(attr, 0), wrap, line_pens, &id);
 			}
 
 			int x_inc;
